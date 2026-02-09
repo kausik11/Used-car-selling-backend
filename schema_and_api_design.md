@@ -2,6 +2,8 @@
 
 This document defines a normalized MongoDB schema (using separate collections + references) and REST endpoints for the used car listing platform.
 
+#kkausik11_db_user  :  4gHVmxSkDAJnM6VN
+
 ## Database Schema
 ```json
 {

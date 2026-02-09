@@ -322,15 +322,17 @@ const uploadMedia = async (req, res, next) => {
     const bodyImages = req.body?.images;
     const bodyReport = req.body?.inspection_report;
 
-    const uploadedImages = (req.files?.images || []).map((file, index) => ({
+    const files = Array.isArray(req.files) ? req.files : [];
+    const imageFiles = files.filter((f) => f.fieldname === 'images');
+    const reportFiles = files.filter((f) => f.fieldname === 'inspection_report');
+
+    const uploadedImages = imageFiles.map((file, index) => ({
       url: file.path,
       kind: req.body?.[`images_kind_${index}`] || 'other',
       sort_order: index + 1,
     }));
 
-    const uploadedReport = req.files?.inspection_report?.[0]
-      ? { url: req.files.inspection_report[0].path, type: 'pdf' }
-      : null;
+    const uploadedReport = reportFiles[0] ? { url: reportFiles[0].path, type: 'pdf' } : null;
 
     const media = await Media.findOneAndUpdate(
       { car_id },

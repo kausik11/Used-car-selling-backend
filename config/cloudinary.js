@@ -21,6 +21,15 @@ const storage = new CloudinaryStorage({
   },
 });
 
-const upload = multer({ storage });
+const allowedFileFields = new Set(['images', 'inspection_report']);
 
-module.exports = { cloudinary, upload };
+const fileFilter = (req, file, cb) => {
+  if (!allowedFileFields.has(file.fieldname)) {
+    return cb(null, false);
+  }
+  return cb(null, true);
+};
+
+const upload = multer({ storage, fileFilter });
+
+module.exports = { cloudinary, upload, allowedFileFields };
