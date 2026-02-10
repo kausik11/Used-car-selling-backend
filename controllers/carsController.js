@@ -255,11 +255,13 @@ const listCars = async (req, res, next) => {
       sort = '-created_at',
     } = req.query;
 
+    const brandList = typeof brand === 'string' ? brand.split(',').map((b) => b.trim()).filter(Boolean) : [];
+
     const filters = cleanUndefined({
-      brand,
+      brand: brandList.length > 0 ? { $in: brandList } : brand,
       model,
       variant,
-      make_year: make_year ? Number(make_year) : undefined,
+      make_year: make_year ? { $gte: Number(make_year) } : undefined,
       registration_year: registration_year ? Number(registration_year) : undefined,
       city,
       fuel_type,
@@ -305,11 +307,25 @@ const listCars = async (req, res, next) => {
         .lean(),
     ]);
 
+    const carIds = items.map((item) => item.car_id);
+    const mediaDocs = carIds.length
+      ? await Media.find({ car_id: { $in: carIds } }).lean()
+      : [];
+    const mediaByCarId = mediaDocs.reduce((acc, doc) => {
+      acc[doc.car_id] = doc;
+      return acc;
+    }, {});
+
+    const itemsWithMedia = items.map((item) => ({
+      ...item,
+      media: mediaByCarId[item.car_id] || null,
+    }));
+
     return res.json({
       page: Number(page),
       limit: Number(limit),
       total,
-      items,
+      items: itemsWithMedia,
     });
   } catch (err) {
     return next(err);
