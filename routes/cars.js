@@ -4,6 +4,7 @@ const {
   updateCar,
   deleteCar,
   getCar,
+  getCarBySlug,
   listCars,
   uploadMedia,
 } = require('../controllers/carsController');
@@ -14,6 +15,7 @@ const router = express.Router();
 router.post('/cars', createCar);
 router.patch('/cars/:car_id', updateCar);
 router.delete('/cars/:car_id', deleteCar);
+router.get('/buy-used-cars/:city/:brand/:model/:car_slug/:listing_ref', getCarBySlug);
 router.get('/cars/:car_id', getCar);
 router.get('/cars', listCars);
 

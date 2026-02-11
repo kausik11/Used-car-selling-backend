@@ -1,5 +1,13 @@
 const mongoose = require('mongoose');
 
+const CustomFieldSchema = new mongoose.Schema(
+  {
+    title: { type: String, required: true, trim: true },
+    value: { type: String, required: true, trim: true },
+  },
+  { _id: false }
+);
+
 const CarListingSchema = new mongoose.Schema(
   {
     car_id: { type: String, required: true, unique: true, index: true },
@@ -68,6 +76,10 @@ const CarListingSchema = new mongoose.Schema(
       amount: { type: Number, index: true },
       currency: { type: String, default: 'INR' },
     },
+    listing_ref: { type: String, unique: true, sparse: true, index: true },
+    car_slug: { type: String, index: true },
+    slug_path: { type: String, unique: true, sparse: true, index: true },
+    custom: { type: [CustomFieldSchema], default: [] },
   },
   { timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } }
 );

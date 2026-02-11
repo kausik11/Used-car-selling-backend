@@ -6,7 +6,13 @@ const MediaSchema = new mongoose.Schema(
     images: [
       {
         url: { type: String, required: true },
-        kind: { type: String, enum: ['exterior', 'interior', 'engine', 'tyres', 'other'] },
+        view_type: { type: String, enum: ['exterior_360', 'interior_360', 'gallery'], default: 'gallery' },
+        gallery_category: {
+          type: String,
+          enum: ['exterior', 'interior', 'engine', 'tyres', 'top_features', 'extra', 'dents', 'other'],
+        },
+        // Legacy field kept for backward compatibility.
+        kind: { type: String, enum: ['exterior', 'interior', 'engine', 'tyres', 'top_features', 'extra', 'dents', 'other'] },
         sort_order: { type: Number },
       },
     ],
