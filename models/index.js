@@ -8,4 +8,9 @@ module.exports = {
   SuspensionSteeringBrakes: require('./SuspensionSteeringBrakes'),
   BookingPolicy: require('./BookingPolicy'),
   CarFeatures: require('./CarFeatures'),
+  Review: require('./Review'),
+  LoveStory: require('./LoveStory'),
+  Faq: require('./Faq'),
+  SellCar: require('./SellCar'),
+  TestDriveBooking: require('./TestDriveBooking'),
 };

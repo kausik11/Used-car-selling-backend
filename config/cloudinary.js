@@ -32,4 +32,30 @@ const fileFilter = (req, file, cb) => {
 
 const upload = multer({ storage, fileFilter });
 
-module.exports = { cloudinary, upload, allowedFileFields };
+const sellCarStorage = new CloudinaryStorage({
+  cloudinary,
+  params: (req, file) => ({
+    folder: `sell_cars/${req.params.sell_car_id || 'new'}`,
+    resource_type: 'image',
+    public_id: `${file.fieldname}-${Date.now()}`,
+  }),
+});
+
+const sellCarAllowedFields = new Set(['front', 'back', 'interior', 'odometer']);
+
+const sellCarFileFilter = (req, file, cb) => {
+  if (!sellCarAllowedFields.has(file.fieldname)) {
+    return cb(null, false);
+  }
+  return cb(null, true);
+};
+
+const sellCarUpload = multer({ storage: sellCarStorage, fileFilter: sellCarFileFilter });
+
+module.exports = {
+  cloudinary,
+  upload,
+  allowedFileFields,
+  sellCarUpload,
+  sellCarAllowedFields,
+};
