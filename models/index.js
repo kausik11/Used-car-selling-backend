@@ -1,6 +1,5 @@
 module.exports = {
   CarListing: require('./CarListing'),
-  InspectionModule: require('./InspectionModule'),
   Tyres: require('./Tyres'),
   Media: require('./Media'),
   DimensionsCapacity: require('./DimensionsCapacity'),

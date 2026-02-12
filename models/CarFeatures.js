@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const applyRequireAllFields = require('./utils/requireAllFields');
 
 const FeatureItemSchema = new mongoose.Schema(
   {
@@ -180,5 +181,7 @@ const CarFeaturesSchema = new mongoose.Schema(
   },
   { timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } }
 );
+
+applyRequireAllFields(CarFeaturesSchema);
 
 module.exports = mongoose.model('CarFeatures', CarFeaturesSchema);

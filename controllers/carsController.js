@@ -1,7 +1,6 @@
 const { v4: uuidv4 } = require('uuid');
 const {
   CarListing,
-  InspectionModule,
   Tyres,
   Media,
   DimensionsCapacity,
@@ -69,14 +68,6 @@ const findBestTextMatch = (text, values) => {
   }) || null;
 };
 
-const INSPECTION_MODULE_DESCRIPTION_MAP = {
-  'Core systems': 'Engine, transmission & chassis',
-  'Supporting systems': 'Fuel supply, ignition & other systems',
-  'Interiors & AC': 'Seats, AC, audio & other features',
-  'Exteriors & lights': 'Panels, glasses, lights & fixtures',
-  'Wear & tear parts': 'Tyres, clutch, brakes & more',
-};
-
 const slugifyPart = (value) =>
   String(value || '')
     .trim()
@@ -129,37 +120,8 @@ const upsertByCarId = async (Model, car_id, payload) => {
   return Model.findOneAndUpdate(
     { car_id },
     { $set: payload, $setOnInsert: { car_id } },
-    { new: true, upsert: true }
+    { new: true, upsert: true, runValidators: true, context: 'query' }
   );
-};
-
-const upsertInspectionModules = async (car_id, modules) => {
-  if (!Array.isArray(modules)) return;
-  const ops = modules
-    .filter((m) => m && m.module && INSPECTION_MODULE_DESCRIPTION_MAP[m.module])
-    .map((m) => ({
-      updateOne: {
-        filter: { car_id, module: m.module },
-        update: {
-          $set: {
-            car_id,
-            module: m.module,
-            description: INSPECTION_MODULE_DESCRIPTION_MAP[m.module],
-            parts_count: m.parts_count,
-            assemblies_count: m.assemblies_count,
-            score: m.score,
-            rating: m.rating,
-            summary: m.summary,
-            module_image_url: m.module_image_url,
-            components: m.components || [],
-          },
-        },
-        upsert: true,
-      },
-    }));
-  if (ops.length > 0) {
-    await InspectionModule.bulkWrite(ops, { ordered: false });
-  }
 };
 
 const fetchCarAggregate = async (car_id) => {
@@ -168,7 +130,6 @@ const fetchCarAggregate = async (car_id) => {
   const listing = await ensureListingSlugFields(rawListing);
 
   const [
-    inspection_modules,
     tyres,
     media,
     dimensions_capacity,
@@ -178,7 +139,6 @@ const fetchCarAggregate = async (car_id) => {
     booking_policy,
     features,
   ] = await Promise.all([
-    InspectionModule.find({ car_id }).lean(),
     Tyres.findOne({ car_id }).lean(),
     Media.findOne({ car_id }).lean(),
     DimensionsCapacity.findOne({ car_id }).lean(),
@@ -191,7 +151,6 @@ const fetchCarAggregate = async (car_id) => {
 
   return {
     ...listing,
-    inspection_modules: inspection_modules || [],
     tyres: tyres || null,
     media: media || null,
     dimensions_capacity: dimensions_capacity || null,
@@ -222,11 +181,18 @@ const createCar = async (req, res, next) => {
       suspension_steering_brakes,
       booking_policy,
       features,
-      inspection_modules,
       tyres,
       media,
       ...listingData
     } = req.body || {};
+
+    if (!media || typeof media !== 'object') {
+      return res.status(400).json({
+        error: 'Validation error',
+        message: 'Media details are required while creating a car',
+        details: [{ field: 'media', message: 'Media details are required', kind: 'required' }],
+      });
+    }
 
     const car_id = inputCarId || uuidv4();
 
@@ -250,8 +216,6 @@ const createCar = async (req, res, next) => {
       upsertByCarId(Media, car_id, media),
     ]);
 
-    await upsertInspectionModules(car_id, inspection_modules);
-
     const listingPayload = {
       car_id,
       ...listingData,
@@ -259,6 +223,9 @@ const createCar = async (req, res, next) => {
       engine_transmission_id: engineDoc ? engineDoc._id : undefined,
       fuel_performance_id: fuelDoc ? fuelDoc._id : undefined,
       suspension_steering_brakes_id: suspensionDoc ? suspensionDoc._id : undefined,
+      features_id: featuresDoc ? featuresDoc._id : undefined,
+      tyres_id: tyresDoc ? tyresDoc._id : undefined,
+      media_id: mediaDoc ? mediaDoc._id : undefined,
       booking_policy_id: bookingDoc ? bookingDoc._id : undefined,
     };
     const slugFields = await buildSlugFields(listingPayload);
@@ -289,7 +256,6 @@ const updateCar = async (req, res, next) => {
       suspension_steering_brakes,
       booking_policy,
       features,
-      inspection_modules,
       tyres,
       media,
       ...listingData
@@ -298,7 +264,16 @@ const updateCar = async (req, res, next) => {
     const existingListing = await CarListing.findOne({ car_id }).lean();
     if (!existingListing) return res.status(404).json({ error: 'Car not found' });
 
-    await Promise.all([
+    const [
+      dimensionsDoc,
+      engineDoc,
+      fuelDoc,
+      suspensionDoc,
+      bookingDoc,
+      featuresDoc,
+      tyresDoc,
+      mediaDoc,
+    ] = await Promise.all([
       upsertByCarId(DimensionsCapacity, car_id, dimensions_capacity),
       upsertByCarId(EngineTransmission, car_id, engine_transmission),
       upsertByCarId(FuelPerformance, car_id, fuel_performance),
@@ -309,9 +284,17 @@ const updateCar = async (req, res, next) => {
       upsertByCarId(Media, car_id, media),
     ]);
 
-    await upsertInspectionModules(car_id, inspection_modules);
-
-    const listingUpdates = cleanUndefined(listingData);
+    const listingUpdates = cleanUndefined({
+      ...listingData,
+      dimensions_capacity_id: dimensionsDoc ? dimensionsDoc._id : undefined,
+      engine_transmission_id: engineDoc ? engineDoc._id : undefined,
+      fuel_performance_id: fuelDoc ? fuelDoc._id : undefined,
+      suspension_steering_brakes_id: suspensionDoc ? suspensionDoc._id : undefined,
+      features_id: featuresDoc ? featuresDoc._id : undefined,
+      tyres_id: tyresDoc ? tyresDoc._id : undefined,
+      media_id: mediaDoc ? mediaDoc._id : undefined,
+      booking_policy_id: bookingDoc ? bookingDoc._id : undefined,
+    });
     const slugFields = await buildSlugFields(
       { ...existingListing, ...listingUpdates },
       existingListing.listing_ref
@@ -559,17 +542,24 @@ const uploadMedia = async (req, res, next) => {
     const imageFiles = files.filter((f) => f.fieldname === 'images');
     const reportFiles = files.filter((f) => f.fieldname === 'inspection_report');
 
-    const uploadedImages = imageFiles.map((file, index) => ({
-      url: file.path,
-      view_type: req.body?.[`images_view_type_${index}`] || 'gallery',
-      gallery_category:
-        req.body?.[`images_gallery_category_${index}`] ||
-        req.body?.[`images_kind_${index}`] ||
-        'other',
-      // Keep writing legacy key so existing clients keep working.
-      kind: req.body?.[`images_kind_${index}`] || req.body?.[`images_gallery_category_${index}`] || 'other',
-      sort_order: index + 1,
-    }));
+    const uploadedImages = imageFiles.map((file, index) => {
+      const view_type = req.body?.[`images_view_type_${index}`] || 'gallery';
+      const gallery_category =
+        req.body?.[`images_gallery_category_${index}`] || req.body?.[`images_kind_${index}`] || 'other';
+
+      return {
+        url: file.path,
+        view_type,
+        gallery_category,
+        ...(view_type === 'gallery'
+          ? {
+              // Keep writing legacy key so existing clients keep working.
+              kind: req.body?.[`images_kind_${index}`] || req.body?.[`images_gallery_category_${index}`] || 'other',
+            }
+          : {}),
+        sort_order: index + 1,
+      };
+    });
 
     const uploadedReport = reportFiles[0] ? { url: reportFiles[0].path, type: 'pdf' } : null;
 
@@ -584,7 +574,7 @@ const uploadMedia = async (req, res, next) => {
           ...(bodyReport ? { inspection_report: bodyReport } : {}),
         },
       },
-      { new: true, upsert: true }
+      { new: true, upsert: true, runValidators: true, context: 'query' }
     );
 
     return res.json({

@@ -10,6 +10,7 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
+// car related routs
 app.use('/api/v1', carsRouter);
 
 app.use(errorHandler);

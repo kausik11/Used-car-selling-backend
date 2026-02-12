@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const applyRequireAllFields = require('./utils/requireAllFields');
 
 const CustomFieldSchema = new mongoose.Schema(
   {
@@ -57,13 +58,6 @@ const CarListingSchema = new mongoose.Schema(
     reasons_to_buy: { type: [String], default: [] },
     highlights: { type: [String], default: [] },
     overall_score: { type: Number },
-    inspection_summary: {
-      core_systems: { type: String, enum: ['excellent', 'good', 'fair', 'poor'] },
-      supporting_systems: { type: String, enum: ['excellent', 'good', 'fair', 'poor'] },
-      interiors_ac: { type: String, enum: ['excellent', 'good', 'fair', 'poor'] },
-      exteriors_lights: { type: String, enum: ['excellent', 'good', 'fair', 'poor'] },
-      wear_and_tear: { type: String, enum: ['excellent', 'good', 'fair', 'poor'] },
-    },
     dimensions_capacity_id: { type: mongoose.Schema.Types.ObjectId, ref: 'DimensionsCapacity' },
     engine_transmission_id: { type: mongoose.Schema.Types.ObjectId, ref: 'EngineTransmission' },
     fuel_performance_id: { type: mongoose.Schema.Types.ObjectId, ref: 'FuelPerformance' },
@@ -71,6 +65,9 @@ const CarListingSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'SuspensionSteeringBrakes',
     },
+    features_id: { type: mongoose.Schema.Types.ObjectId, ref: 'CarFeatures' },
+    tyres_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Tyres' },
+    media_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Media' },
     booking_policy_id: { type: mongoose.Schema.Types.ObjectId, ref: 'BookingPolicy' },
     price: {
       amount: { type: Number, index: true },
@@ -83,6 +80,8 @@ const CarListingSchema = new mongoose.Schema(
   },
   { timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } }
 );
+
+applyRequireAllFields(CarListingSchema);
 
 CarListingSchema.index({ brand: 1, model: 1 });
 CarListingSchema.index({ city: 1, area: 1 });

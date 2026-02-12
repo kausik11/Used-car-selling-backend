@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const applyRequireAllFields = require('./utils/requireAllFields');
 
 const FuelPerformanceSchema = new mongoose.Schema(
   {
@@ -9,5 +10,7 @@ const FuelPerformanceSchema = new mongoose.Schema(
   },
   { timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } }
 );
+
+applyRequireAllFields(FuelPerformanceSchema);
 
 module.exports = mongoose.model('FuelPerformance', FuelPerformanceSchema);

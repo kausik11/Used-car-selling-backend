@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const applyRequireAllFields = require('./utils/requireAllFields');
 
 const CustomFieldSchema = new mongoose.Schema(
   {
@@ -24,5 +25,7 @@ const EngineTransmissionSchema = new mongoose.Schema(
   },
   { timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } }
 );
+
+applyRequireAllFields(EngineTransmissionSchema);
 
 module.exports = mongoose.model('EngineTransmission', EngineTransmissionSchema);

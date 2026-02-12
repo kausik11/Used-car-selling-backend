@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const applyRequireAllFields = require('./utils/requireAllFields');
 
 const SuspensionSteeringBrakesSchema = new mongoose.Schema(
   {
@@ -15,5 +16,7 @@ const SuspensionSteeringBrakesSchema = new mongoose.Schema(
   },
   { timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } }
 );
+
+applyRequireAllFields(SuspensionSteeringBrakesSchema);
 
 module.exports = mongoose.model('SuspensionSteeringBrakes', SuspensionSteeringBrakesSchema);

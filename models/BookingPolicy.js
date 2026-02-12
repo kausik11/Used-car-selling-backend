@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const applyRequireAllFields = require('./utils/requireAllFields');
 
 const BookingPolicySchema = new mongoose.Schema(
   {
@@ -10,5 +11,7 @@ const BookingPolicySchema = new mongoose.Schema(
   },
   { timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } }
 );
+
+applyRequireAllFields(BookingPolicySchema);
 
 module.exports = mongoose.model('BookingPolicy', BookingPolicySchema);

@@ -12,6 +12,8 @@ const { upload } = require('../config/cloudinary');
 
 const router = express.Router();
 
+
+// car related routs
 router.post('/cars', createCar);
 router.patch('/cars/:car_id', updateCar);
 router.delete('/cars/:car_id', deleteCar);

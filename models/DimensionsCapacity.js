@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const applyRequireAllFields = require('./utils/requireAllFields');
 
 const CustomFieldSchema = new mongoose.Schema(
   {
@@ -30,5 +31,7 @@ const DimensionsCapacitySchema = new mongoose.Schema(
   },
   { timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } }
 );
+
+applyRequireAllFields(DimensionsCapacitySchema);
 
 module.exports = mongoose.model('DimensionsCapacity', DimensionsCapacitySchema);
