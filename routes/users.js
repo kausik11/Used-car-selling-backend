@@ -14,7 +14,7 @@ const router = express.Router();
 router.post('/users', authMiddleware, adminOrAdministrator, createUser);
 router.get('/users', authMiddleware, adminOrAdministrator, listUsers);
 router.get('/users/:user_id', authMiddleware, adminOrAdministrator, getUser);
-router.patch('/users/:user_id', authMiddleware, adminOrAdministrator, updateUser);
+router.patch('/users/:user_id', authMiddleware, updateUser);
 router.delete('/users/:user_id', authMiddleware, adminOrAdministrator, deleteUser);
 
 module.exports = router;

@@ -107,6 +107,18 @@ const updateUser = async (req, res, next) => {
       is_phone_verified,
     } = req.body;
 
+    const isAdminLike = ['admin', 'administrator'].includes(req.user?.role);
+    const isSelfUpdate = req.user?.id === userId;
+    if (!isAdminLike && !isSelfUpdate) {
+      return res.status(403).json({ error: 'You can only update your own profile' });
+    }
+
+    if (!isAdminLike && (role !== undefined || is_email_verified !== undefined || is_phone_verified !== undefined)) {
+      return res.status(403).json({
+        error: 'Only admin or administrator can update role or verification flags',
+      });
+    }
+
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -130,7 +142,7 @@ const updateUser = async (req, res, next) => {
         return res.status(400).json({ error: 'Phone can only be updated 2 times' });
       }
       if (phone) {
-        const phoneExists = await User.findOne({ phone, _id: { $ne: userId } });
+        const phoneExists = await User.findOne({ phone, _id: { $ne: user._id } });
         if (phoneExists) {
           return res.status(409).json({ error: 'Phone is already in use' });
         }
@@ -140,7 +152,7 @@ const updateUser = async (req, res, next) => {
     }
 
     if (password !== undefined && password !== '') user.password = password;
-    if (role !== undefined) {
+    if (isAdminLike && role !== undefined) {
       const normalizedRole = normalizeRole(role);
       if (!ALLOWED_ROLES.includes(normalizedRole)) {
         return res.status(400).json({
@@ -149,8 +161,8 @@ const updateUser = async (req, res, next) => {
       }
       user.role = normalizedRole;
     }
-    if (is_email_verified !== undefined) user.is_email_verified = Boolean(is_email_verified);
-    if (is_phone_verified !== undefined) user.is_phone_verified = Boolean(is_phone_verified);
+    if (isAdminLike && is_email_verified !== undefined) user.is_email_verified = Boolean(is_email_verified);
+    if (isAdminLike && is_phone_verified !== undefined) user.is_phone_verified = Boolean(is_phone_verified);
 
     await user.save();
 
