@@ -9,6 +9,7 @@ const {
   SuspensionSteeringBrakes,
   BookingPolicy,
   CarFeatures,
+  RecentCarView,
 } = require('../models');
 
 const cleanUndefined = (obj) =>
@@ -190,6 +191,28 @@ const upsertByCarId = async (Model, car_id, payload) => {
     { $set: payload, $setOnInsert: { car_id } },
     { new: true, upsert: true, runValidators: true, context: 'query', setDefaultsOnInsert: true }
   );
+};
+
+const MAX_RECENT_VIEWS_PER_USER = 20;
+
+const trackRecentCarView = async (userId, carId) => {
+  if (!userId || !carId) return;
+
+  await RecentCarView.findOneAndUpdate(
+    { user_id: userId, car_id: carId },
+    { $set: { viewed_at: new Date() } },
+    { upsert: true, setDefaultsOnInsert: true }
+  );
+
+  const staleEntries = await RecentCarView.find({ user_id: userId })
+    .sort({ viewed_at: -1 })
+    .skip(MAX_RECENT_VIEWS_PER_USER)
+    .select('_id')
+    .lean();
+
+  if (staleEntries.length > 0) {
+    await RecentCarView.deleteMany({ _id: { $in: staleEntries.map((entry) => entry._id) } });
+  }
 };
 
 const fetchCarAggregate = async (car_id) => {
@@ -416,6 +439,15 @@ const getCar = async (req, res, next) => {
     const { car_id } = req.params;
     const result = await fetchCarAggregate(car_id);
     if (!result) return res.status(404).json({ error: 'Car not found' });
+
+    if (req.user?.id) {
+      try {
+        await trackRecentCarView(req.user.id, result.car_id);
+      } catch (trackingError) {
+        // Do not fail the request if tracking recent views fails.
+      }
+    }
+
     return res.json(result);
   } catch (err) {
     return next(err);
@@ -435,6 +467,14 @@ const getCarBySlug = async (req, res, next) => {
 
     const result = await fetchCarAggregate(listing.car_id);
     if (!result) return res.status(404).json({ error: 'Car not found' });
+
+    if (req.user?.id) {
+      try {
+        await trackRecentCarView(req.user.id, result.car_id);
+      } catch (trackingError) {
+        // Do not fail the request if tracking recent views fails.
+      }
+    }
 
     return res.json({
       ...result,

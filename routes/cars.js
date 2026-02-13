@@ -9,7 +9,7 @@ const {
   uploadMedia,
 } = require('../controllers/carsController');
 const { upload } = require('../config/cloudinary');
-const { authMiddleware, adminOrAdministrator } = require('../middleware/auth');
+const { authMiddleware, optionalAuthMiddleware, adminOrAdministrator } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -18,8 +18,8 @@ const router = express.Router();
 router.post('/cars', authMiddleware, adminOrAdministrator, createCar);
 router.patch('/cars/:car_id', authMiddleware, adminOrAdministrator, updateCar);
 router.delete('/cars/:car_id', authMiddleware, adminOrAdministrator, deleteCar);
-router.get('/buy-used-cars/:city/:brand/:model/:car_slug/:listing_ref', getCarBySlug);
-router.get('/cars/:car_id', getCar);
+router.get('/buy-used-cars/:city/:brand/:model/:car_slug/:listing_ref', optionalAuthMiddleware, getCarBySlug);
+router.get('/cars/:car_id', optionalAuthMiddleware, getCar);
 router.get('/cars', listCars);
 
 router.post('/cars/:car_id/media', authMiddleware, upload.any(), uploadMedia);

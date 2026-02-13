@@ -15,4 +15,5 @@ module.exports = {
   TestDriveBooking: require('./TestDriveBooking'),
   User: require('./User'),
   Otp: require('./Otp'),
+  RecentCarView: require('./RecentCarView'),
 };

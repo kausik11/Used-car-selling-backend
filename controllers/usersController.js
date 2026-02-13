@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const { CarListing, Media, RecentCarView } = require('../models');
 
 const normalizeEmail = (email) => (email || '').trim().toLowerCase();
 const ALLOWED_ROLES = ['normaluser', 'admin', 'administrator'];
@@ -215,10 +216,83 @@ const deleteUser = async (req, res, next) => {
   }
 };
 
+// Get recently viewed cars for a user (self or admin/administrator).
+const getRecentViewedCars = async (req, res, next) => {
+  try {
+    const { user_id: userId } = req.params;
+    const isAdminLike = ['admin', 'administrator'].includes(req.user?.role);
+    const isSelfRequest = req.user?.id === userId;
+
+    if (!isAdminLike && !isSelfRequest) {
+      return res.status(403).json({ error: 'You can only view your own recently viewed cars' });
+    }
+
+    const requestedLimit = Number(req.query.limit);
+    const limit = Number.isFinite(requestedLimit)
+      ? Math.min(Math.max(requestedLimit, 1), 50)
+      : 20;
+
+    const recentViews = await RecentCarView.find({ user_id: userId })
+      .sort({ viewed_at: -1 })
+      .limit(limit)
+      .lean();
+
+    if (recentViews.length === 0) {
+      return res.status(200).json({ total: 0, items: [] });
+    }
+
+    const carIds = recentViews.map((entry) => entry.car_id);
+    const [listings, mediaDocs] = await Promise.all([
+      CarListing.find({ car_id: { $in: carIds } }).lean(),
+      Media.find({ car_id: { $in: carIds } }).lean(),
+    ]);
+
+    const listingByCarId = listings.reduce((acc, listing) => {
+      acc[listing.car_id] = listing;
+      return acc;
+    }, {});
+    const mediaByCarId = mediaDocs.reduce((acc, media) => {
+      acc[media.car_id] = media;
+      return acc;
+    }, {});
+
+    const items = recentViews
+      .map((entry) => {
+        const listing = listingByCarId[entry.car_id];
+        if (!listing) return null;
+
+        return {
+          car_id: listing.car_id,
+          viewed_at: entry.viewed_at,
+          title: listing.title,
+          brand: listing.brand,
+          model: listing.model,
+          variant: listing.variant,
+          city: listing.city,
+          make_year: listing.make_year,
+          registration_year: listing.registration_year,
+          price: listing.price,
+          status: listing.status,
+          visibility: listing.visibility,
+          listing_ref: listing.listing_ref,
+          car_slug: listing.car_slug,
+          slug_path: listing.slug_path,
+          media: mediaByCarId[listing.car_id] || null,
+        };
+      })
+      .filter(Boolean);
+
+    return res.status(200).json({ total: items.length, items });
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   createUser,
   listUsers,
   getUser,
   updateUser,
   deleteUser,
+  getRecentViewedCars,
 };
