@@ -22,11 +22,6 @@ const userSchema = new mongoose.Schema(
       sparse: true,
       default: null,
     },
-    profile_image: {
-      type: String,
-      trim: true,
-      default: null,
-    },
     password: {
       type: String,
       required: [true, 'Password is required'],

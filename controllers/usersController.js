@@ -11,7 +11,6 @@ const createUser = async (req, res, next) => {
       name,
       email,
       phone,
-      profile_image,
       password,
       role,
       is_email_verified = false,
@@ -43,7 +42,6 @@ const createUser = async (req, res, next) => {
       name,
       email: normalizedEmail,
       phone: phone || null,
-      profile_image: profile_image || null,
       password,
       role: resolvedRole,
       is_email_verified,
@@ -57,7 +55,6 @@ const createUser = async (req, res, next) => {
         name: user.name,
         email: user.email,
         phone: user.phone,
-        profile_image: user.profile_image,
         role: user.role,
         is_email_verified: user.is_email_verified,
         is_phone_verified: user.is_phone_verified,
@@ -104,7 +101,6 @@ const updateUser = async (req, res, next) => {
       name,
       email,
       phone,
-      profile_image,
       password,
       role,
       is_email_verified,
@@ -143,7 +139,6 @@ const updateUser = async (req, res, next) => {
       user.phone_update_count += 1;
     }
 
-    if (profile_image !== undefined) user.profile_image = profile_image || null;
     if (password !== undefined && password !== '') user.password = password;
     if (role !== undefined) {
       const normalizedRole = normalizeRole(role);
