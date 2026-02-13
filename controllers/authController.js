@@ -42,10 +42,11 @@ const getTransporter = () => {
 };
 
 const normalizeEmail = (email) => (email || '').trim().toLowerCase();
+const ALLOWED_ROLES = ['normaluser', 'admin', 'administrator'];
 
 const register = async (req, res, next) => {
   try {
-    const { name, email, phone, password } = req.body;
+    const { name, email, phone, password, role } = req.body;
     const normalizedEmail = normalizeEmail(email);
 
     if (!name || !normalizedEmail || !phone || !password) {
@@ -61,12 +62,14 @@ const register = async (req, res, next) => {
       return res.status(409).json({ error: 'User with this email or phone already exists' });
     }
 
+    const userRole = ALLOWED_ROLES.includes(role) ? role : 'normaluser';
+
     const user = await User.create({
       name,
       email: normalizedEmail,
       phone,
       password,
-      role: 'normaluser',
+      role: userRole,
       is_email_verified: false,
       is_phone_verified: false,
     });

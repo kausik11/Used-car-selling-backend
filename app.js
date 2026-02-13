@@ -6,6 +6,7 @@ const faqsRouter = require('./routes/faqs');
 const sellCarsRouter = require('./routes/sellCars');
 const testDrivesRouter = require('./routes/testDrives');
 const authRouter = require('./routes/auth');
+const usersRouter = require('./routes/users');
 const { authMiddleware } = require('./middleware/auth');
 const { getProfile } = require('./controllers/authController');
 const errorHandler = require('./middleware/errorHandler');
@@ -38,6 +39,7 @@ app.use('/api/v1', loveStoriesRouter);
 app.use('/api/v1', faqsRouter);
 app.use('/api/v1', sellCarsRouter);
 app.use('/api/v1', testDrivesRouter);
+app.use('/api/v1', usersRouter);
 
 app.use(errorHandler);
 
