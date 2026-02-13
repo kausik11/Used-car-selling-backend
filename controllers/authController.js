@@ -179,7 +179,8 @@ This OTP will expire in ${OTP_EXPIRY_MINUTES} minutes.
 If you did not request this OTP, please ignore this email. Do not share this code with anyone.
 
 Thanks,
-Singh Group`,
+Singh Group
+Ref: SG-OTP-V2`,
       html: `
         <div style="font-family: Arial, sans-serif; color: #1f2937; line-height: 1.6;">
           <h2 style="margin: 0 0 12px; color: #111827;">Singh Group</h2>
@@ -193,6 +194,7 @@ Singh Group`,
             If you did not request this OTP, please ignore this email and do not share this code with anyone.
           </p>
           <p style="margin: 16px 0 0;">Thanks,<br/>Singh Group</p>
+          <p style="margin: 8px 0 0; color: #6b7280; font-size: 12px;">Ref: SG-OTP-V2</p>
         </div>
       `,
     });
