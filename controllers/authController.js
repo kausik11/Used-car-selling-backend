@@ -54,12 +54,12 @@ const ALLOWED_ROLES = ['normaluser', 'admin', 'administrator'];
 
 const register = async (req, res, next) => {
   try {
-    const { name, email, phone, password, role } = req.body;
+    const { name, email, phone, password, city, address, pin, role } = req.body;
     const normalizedEmail = normalizeEmail(email);
 
-    if (!name || !normalizedEmail || !phone || !password) {
+    if (!name || !normalizedEmail || !phone || !password || !city || !address || !pin) {
       return res.status(400).json({
-        error: 'name, email, phone and password are required',
+        error: 'name, email, phone, password, city, address and pin are required',
       });
     }
 
@@ -77,6 +77,9 @@ const register = async (req, res, next) => {
       email: normalizedEmail,
       phone,
       password,
+      city,
+      address,
+      pin,
       role: userRole,
       is_email_verified: false,
       is_phone_verified: false,
@@ -237,14 +240,8 @@ const verifyOtp = async (req, res, next) => {
 
     let user = await User.findOne({ email: normalizedEmail });
     if (!user) {
-      const generatedPassword = `otp_user_${Date.now()}`;
-      user = await User.create({
-        name: normalizedEmail.split('@')[0],
-        email: normalizedEmail,
-        password: generatedPassword,
-        role: 'normaluser',
-        is_email_verified: true,
-        is_phone_verified: false,
+      return res.status(400).json({
+        error: 'User profile not found. Please register with city, address and pin first.',
       });
     } else if (!user.is_email_verified) {
       user.is_email_verified = true;

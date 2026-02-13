@@ -52,6 +52,41 @@ const userSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    city: {
+      type: String,
+      trim: true,
+      required: [true, 'City is required'],
+    },
+    address: {
+      type: String,
+      trim: true,
+      required: [true, 'Address is required'],
+    },
+    pin: {
+      type: String,
+      trim: true,
+      required: [true, 'Pin is required'],
+    },
+    budgetRange: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    preferredBrand: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    fuelType: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    transmissionType: {
+      type: String,
+      trim: true,
+      default: null,
+    },
   },
   {
     timestamps: true,

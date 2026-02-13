@@ -12,6 +12,9 @@ const createUser = async (req, res, next) => {
       email,
       phone,
       password,
+      city,
+      address,
+      pin,
       role,
       is_email_verified = false,
       is_phone_verified = false,
@@ -20,9 +23,9 @@ const createUser = async (req, res, next) => {
     const normalizedEmail = normalizeEmail(email);
     const normalizedRole = normalizeRole(role);
     const resolvedRole = normalizedRole || 'normaluser';
-    if (!name || !normalizedEmail || !password) {
+    if (!name || !normalizedEmail || !password || !city || !address || !pin) {
       return res.status(400).json({
-        error: 'name, email and password are required',
+        error: 'name, email, password, city, address and pin are required',
       });
     }
     if (!ALLOWED_ROLES.includes(resolvedRole)) {
@@ -43,6 +46,9 @@ const createUser = async (req, res, next) => {
       email: normalizedEmail,
       phone: phone || null,
       password,
+      city,
+      address,
+      pin,
       role: resolvedRole,
       is_email_verified,
       is_phone_verified,
@@ -102,6 +108,13 @@ const updateUser = async (req, res, next) => {
       email,
       phone,
       password,
+      city,
+      address,
+      pin,
+      budgetRange,
+      preferredBrand,
+      fuelType,
+      transmissionType,
       role,
       is_email_verified,
       is_phone_verified,
@@ -152,6 +165,14 @@ const updateUser = async (req, res, next) => {
     }
 
     if (password !== undefined && password !== '') user.password = password;
+    if (city !== undefined) user.city = city;
+    if (address !== undefined) user.address = address;
+    if (pin !== undefined) user.pin = pin;
+    if (budgetRange !== undefined) user.budgetRange = budgetRange || null;
+    if (preferredBrand !== undefined) user.preferredBrand = preferredBrand || null;
+    if (fuelType !== undefined) user.fuelType = fuelType || null;
+    if (transmissionType !== undefined) user.transmissionType = transmissionType || null;
+
     if (isAdminLike && role !== undefined) {
       const normalizedRole = normalizeRole(role);
       if (!ALLOWED_ROLES.includes(normalizedRole)) {
