@@ -1,4 +1,5 @@
 const express = require('express');
+const cors = require('cors');
 const carsRouter = require('./routes/cars');
 const reviewsRouter = require('./routes/reviews');
 const loveStoriesRouter = require('./routes/loveStories');
@@ -12,6 +13,24 @@ const { getProfile } = require('./controllers/authController');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
+
+const defaultAllowedOrigins = ['http://localhost:5173', 'http://localhost:5174'];
+const envAllowedOrigins = (process.env.CORS_ALLOWED_ORIGINS || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+const allowedOrigins = envAllowedOrigins.length > 0 ? envAllowedOrigins : defaultAllowedOrigins;
+
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error('Not allowed by CORS'));
+    },
+  })
+);
 
 app.use(express.json({ limit: '2mb' }));
 
