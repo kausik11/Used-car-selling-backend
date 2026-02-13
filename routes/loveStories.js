@@ -6,13 +6,13 @@ const {
   updateLoveStory,
   deleteLoveStory,
 } = require('../controllers/loveStoriesController');
-const { authMiddleware } = require('../middleware/auth');
+const { authMiddleware, adminOrAdministrator } = require('../middleware/auth');
 
 const router = express.Router();
 
-router.post('/love-stories', authMiddleware, createLoveStory);
-router.patch('/love-stories/:story_id', authMiddleware, updateLoveStory);
-router.delete('/love-stories/:story_id', authMiddleware, deleteLoveStory);
+router.post('/love-stories', authMiddleware, adminOrAdministrator, createLoveStory);
+router.patch('/love-stories/:story_id', authMiddleware, adminOrAdministrator, updateLoveStory);
+router.delete('/love-stories/:story_id', authMiddleware, adminOrAdministrator, deleteLoveStory);
 router.get('/love-stories', listLoveStories);
 router.get('/love-stories/:story_id', getLoveStory);
 
