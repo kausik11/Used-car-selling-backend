@@ -87,6 +87,74 @@ const buildSlugPath = ({ city, brand, model, car_slug, listing_ref }) =>
 
 const createListingRef = () => String(Math.floor(10000000 + Math.random() * 90000000));
 
+const FEATURE_DESCRIPTIONS = {
+  safety: {
+    anti_theft_device:
+      'An anti-theft device is a security system in a vehicle designed to prevent theft by deterring unauthorized access, starting, or movement of the car.',
+    engine_immobilizer:
+      'An engine immobilizer prevents the engine from starting unless the correct key or transponder is detected.',
+    esp: 'Electronic Stability Program helps the car stay stable by reducing skids during sudden turns or slippery conditions.',
+    tpms: 'Tyre Pressure Monitoring System alerts the driver when tyre pressure is too low.',
+    hill_hold_control:
+      'Hill hold control prevents the car from rolling backward on slopes when moving from brake to accelerator.',
+    door_ajar_warning: 'Door ajar warning alerts the driver when one or more doors are not fully closed.',
+    active_roll_mitigation:
+      'Active roll mitigation helps reduce rollover risk by selectively applying brakes and managing vehicle stability.',
+    cornering_headlights:
+      'Cornering headlights improve visibility in turns by lighting the direction of steering input.',
+    follow_me_home_headlamps:
+      'Follow-me-home headlamps keep headlights on briefly after locking to help visibility while walking away.',
+    child_seat_anchor_points:
+      'Child seat anchor points provide dedicated mounting points for securely installing child seats.',
+    front_torso_airbags:
+      'Front torso airbags help protect the chest and upper body of front occupants in side impacts.',
+    rear_torso_airbags:
+      'Rear torso airbags help protect rear passengers in side-impact collisions.',
+    traction_control:
+      'Traction control limits wheel spin on slippery roads by adjusting engine power or braking.',
+  },
+  comfort: {
+    outlets_12v: '12V outlets let you power or charge compatible accessories in the cabin.',
+    power_windows: 'Power windows allow windows to be opened and closed using electrical switches.',
+    keyless_entry: 'Keyless entry lets you lock or unlock the car without taking the key out of your pocket.',
+    keyless_start: 'Keyless start lets you start or stop the engine using a button instead of a traditional key slot.',
+    cruise_control: 'Cruise control maintains a constant speed without continuous accelerator input on long drives.',
+    tailgate_ajar_warning: 'Tailgate ajar warning alerts the driver if the boot door is not fully closed.',
+    glove_compartment: 'A glove compartment is a dashboard storage space for documents and small essentials.',
+    adjustable_orvm: 'Adjustable ORVM allows mirror angle adjustment for better rear-side visibility.',
+    seat_lumbar_support: 'Seat lumbar support improves lower-back comfort and posture on long drives.',
+    trunk_cargo_lights: 'Trunk cargo lights illuminate the boot area for easier loading in low light.',
+    driver_ventilated_seat:
+      'Driver ventilated seat circulates air through seat surfaces for better comfort in hot weather.',
+    electrically_adjustable_orvm:
+      'Electrically adjustable ORVM lets you adjust outside rear-view mirrors using cabin controls.',
+    steering_wheel_gearshift_paddles:
+      'Steering wheel gearshift paddles allow manual gear changes without moving hands off the steering wheel.',
+  },
+  entertainment: {
+    android_auto:
+      'Android Auto connects Android phones for maps, calls, music, and voice controls on the infotainment screen.',
+    apple_carplay:
+      'Apple CarPlay connects iPhones for navigation, calls, messages, and media via the infotainment system.',
+    gps_navigation_system: 'GPS navigation system provides turn-by-turn route guidance using satellite positioning.',
+  },
+};
+
+const enrichFeaturesWithDescriptions = (featuresPayload) => {
+  if (!featuresPayload || typeof featuresPayload !== 'object') return featuresPayload;
+
+  const enriched = { ...featuresPayload };
+  Object.entries(FEATURE_DESCRIPTIONS).forEach(([sectionKey, descriptions]) => {
+    if (!enriched[sectionKey] || typeof enriched[sectionKey] !== 'object') return;
+    enriched[sectionKey] = {
+      ...enriched[sectionKey],
+      descriptions: { ...descriptions },
+    };
+  });
+
+  return enriched;
+};
+
 const getUniqueListingRef = async () => {
   for (let i = 0; i < 12; i += 1) {
     const candidate = createListingRef();
@@ -120,7 +188,7 @@ const upsertByCarId = async (Model, car_id, payload) => {
   return Model.findOneAndUpdate(
     { car_id },
     { $set: payload, $setOnInsert: { car_id } },
-    { new: true, upsert: true, runValidators: true, context: 'query' }
+    { new: true, upsert: true, runValidators: true, context: 'query', setDefaultsOnInsert: true }
   );
 };
 
@@ -195,6 +263,7 @@ const createCar = async (req, res, next) => {
     }
 
     const car_id = inputCarId || uuidv4();
+    const featuresPayload = enrichFeaturesWithDescriptions(features);
 
     const [
       dimensionsDoc,
@@ -211,7 +280,7 @@ const createCar = async (req, res, next) => {
       upsertByCarId(FuelPerformance, car_id, fuel_performance),
       upsertByCarId(SuspensionSteeringBrakes, car_id, suspension_steering_brakes),
       upsertByCarId(BookingPolicy, car_id, booking_policy),
-      upsertByCarId(CarFeatures, car_id, features),
+      upsertByCarId(CarFeatures, car_id, featuresPayload),
       upsertByCarId(Tyres, car_id, tyres),
       upsertByCarId(Media, car_id, media),
     ]);
@@ -264,6 +333,8 @@ const updateCar = async (req, res, next) => {
     const existingListing = await CarListing.findOne({ car_id }).lean();
     if (!existingListing) return res.status(404).json({ error: 'Car not found' });
 
+    const featuresPayload = enrichFeaturesWithDescriptions(features);
+
     const [
       dimensionsDoc,
       engineDoc,
@@ -279,7 +350,7 @@ const updateCar = async (req, res, next) => {
       upsertByCarId(FuelPerformance, car_id, fuel_performance),
       upsertByCarId(SuspensionSteeringBrakes, car_id, suspension_steering_brakes),
       upsertByCarId(BookingPolicy, car_id, booking_policy),
-      upsertByCarId(CarFeatures, car_id, features),
+      upsertByCarId(CarFeatures, car_id, featuresPayload),
       upsertByCarId(Tyres, car_id, tyres),
       upsertByCarId(Media, car_id, media),
     ]);

@@ -9,6 +9,36 @@ const FeatureItemSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const SafetyDescriptionsSchema = new mongoose.Schema(
+  {
+    anti_theft_device: { type: String },
+    engine_immobilizer: { type: String },
+    esp: { type: String },
+    tpms: { type: String },
+    hill_hold_control: { type: String },
+  },
+  { _id: false }
+);
+
+const ComfortDescriptionsSchema = new mongoose.Schema(
+  {
+    keyless_entry: { type: String },
+    keyless_start: { type: String },
+    cruise_control: { type: String },
+    tailgate_ajar_warning: { type: String },
+  },
+  { _id: false }
+);
+
+const EntertainmentDescriptionsSchema = new mongoose.Schema(
+  {
+    android_auto: { type: String },
+    apple_carplay: { type: String },
+    gps_navigation_system: { type: String },
+  },
+  { _id: false }
+);
+
 const CarFeaturesSchema = new mongoose.Schema(
   {
     car_id: { type: String, required: true, unique: true, index: true },
@@ -16,8 +46,16 @@ const CarFeaturesSchema = new mongoose.Schema(
       abs: { type: Boolean },
       airbags: { type: String, enum: ['none', 'driver', 'dual', 'curtain', 'multiple'] },
       airbag_count: { type: Number },
-      engine_immobilizer: { type: Boolean },
-      anti_theft_device: { type: Boolean },
+      engine_immobilizer: {
+        type: Boolean,
+        description:
+          'An engine immobilizer prevents the engine from starting unless the correct key or transponder is detected.',
+      },
+      anti_theft_device: {
+        type: Boolean,
+        description:
+          'An anti-theft device is a security system in a vehicle designed to prevent theft by deterring unauthorized access, starting, or movement of the car.',
+      },
       central_locking: { type: Boolean },
       headlight_height_adjuster: { type: Boolean },
       seat_belt_warning: { type: Boolean },
@@ -36,7 +74,11 @@ const CarFeaturesSchema = new mongoose.Schema(
         enum: ['Global NCAP', 'Bharat NCAP', 'ASEAN NCAP', 'Euro NCAP', 'NHTSA', 'IIHS'],
       },
       automatic_parking_assist: { type: Boolean },
-      esp: { type: Boolean },
+      esp: {
+        type: Boolean,
+        description:
+          'Electronic Stability Program helps the car stay stable by reducing skids during sudden turns or slippery conditions.',
+      },
       knee_airbags: { type: Boolean },
       brake_assist: { type: Boolean },
       view_camera_360: { type: Boolean },
@@ -45,8 +87,15 @@ const CarFeaturesSchema = new mongoose.Schema(
       automatic_head_lamps: { type: Boolean },
       cornering_headlights: { type: Boolean },
       follow_me_home_headlamps: { type: Boolean },
-      tpms: { type: Boolean },
-      hill_hold_control: { type: Boolean },
+      tpms: {
+        type: Boolean,
+        description: 'Tyre Pressure Monitoring System alerts the driver when tyre pressure is too low.',
+      },
+      hill_hold_control: {
+        type: Boolean,
+        description:
+          'Hill hold control prevents the car from rolling backward on slopes when moving from brake to accelerator.',
+      },
       parking_sensors: { type: String, enum: ['none', 'rear', 'front_rear'] },
       child_seat_anchor_points: { type: Boolean },
       headlight_ignition_off_reminder: { type: Boolean },
@@ -58,6 +107,7 @@ const CarFeaturesSchema = new mongoose.Schema(
       rear_torso_airbags: { type: Boolean },
       traction_control: { type: Boolean },
       hill_assist: { type: Boolean },
+      descriptions: { type: SafetyDescriptionsSchema, default: undefined },
       custom: { type: [FeatureItemSchema], default: [] },
     },
     comfort: {
@@ -71,9 +121,21 @@ const CarFeaturesSchema = new mongoose.Schema(
       air_conditioner: { type: Boolean },
       outlets_12v: { type: Boolean },
       power_windows: { type: String, enum: ['none', 'front', 'all'] },
-      keyless_start: { type: Boolean },
-      keyless_entry: { type: Boolean },
-      cruise_control: { type: Boolean },
+      keyless_start: {
+        type: Boolean,
+        description:
+          'Keyless start lets you start or stop the engine using a button instead of a traditional key slot.',
+      },
+      keyless_entry: {
+        type: Boolean,
+        description:
+          'Keyless entry lets you lock or unlock the car without taking the key out of your pocket.',
+      },
+      cruise_control: {
+        type: Boolean,
+        description:
+          'Cruise control maintains a constant speed without continuous accelerator input on long drives.',
+      },
       driver_height_adjustable_seat: { type: Boolean },
       steering_mounted_controls: { type: Boolean },
       armrest: { type: Boolean },
@@ -87,7 +149,10 @@ const CarFeaturesSchema = new mongoose.Schema(
       trunk_cargo_lights: { type: Boolean },
       gear_indicator: { type: Boolean },
       rear_reading_lamp: { type: Boolean },
-      tailgate_ajar_warning: { type: Boolean },
+      tailgate_ajar_warning: {
+        type: Boolean,
+        description: 'Tailgate ajar warning alerts the driver if the boot door is not fully closed.',
+      },
       digital_clock: { type: Boolean },
       voice_command_control: { type: Boolean },
       third_row_cup_holders: { type: Boolean },
@@ -109,25 +174,38 @@ const CarFeaturesSchema = new mongoose.Schema(
       luggage_hook_and_net: { type: Boolean },
       air_suspension: { type: Boolean },
       sunroof: { type: String, enum: ['none', 'standard', 'panoramic'] },
+      descriptions: { type: ComfortDescriptionsSchema, default: undefined },
       custom: { type: [FeatureItemSchema], default: [] },
     },
     entertainment: {
       touchscreen_infotainment_system: { type: Boolean },
       touchscreen: { type: Boolean },
-      gps_navigation_system: { type: Boolean },
+      gps_navigation_system: {
+        type: Boolean,
+        description: 'GPS navigation system provides turn-by-turn route guidance using satellite positioning.',
+      },
       bluetooth: { type: Boolean },
       bluetooth_compatibility_connectivity: { type: Boolean },
       usb_compatibility_connectivity: { type: Boolean },
       am_fm_radio: { type: Boolean },
       integrated_in_dash_music_system: { type: Boolean },
-      android_auto: { type: Boolean },
-      apple_carplay: { type: Boolean },
+      android_auto: {
+        type: Boolean,
+        description:
+          'Android Auto connects Android phones for maps, calls, music, and voice controls on the infotainment screen.',
+      },
+      apple_carplay: {
+        type: Boolean,
+        description:
+          'Apple CarPlay connects iPhones for navigation, calls, messages, and media via the infotainment system.',
+      },
       aux_compatibility_connectivity: { type: Boolean },
       dvd_player: { type: Boolean },
       ipod_compatibility: { type: Boolean },
       internal_storage_hard_drive: { type: Boolean },
       number_of_speakers: { type: Number },
       speakers: { type: Number },
+      descriptions: { type: EntertainmentDescriptionsSchema, default: undefined },
       custom: { type: [FeatureItemSchema], default: [] },
     },
     interior: {
