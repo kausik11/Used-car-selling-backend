@@ -22,6 +22,11 @@ const userSchema = new mongoose.Schema(
       sparse: true,
       default: null,
     },
+    profile_image: {
+      type: String,
+      trim: true,
+      default: null,
+    },
     password: {
       type: String,
       required: [true, 'Password is required'],
@@ -39,6 +44,14 @@ const userSchema = new mongoose.Schema(
     is_phone_verified: {
       type: Boolean,
       default: false,
+    },
+    name_update_count: {
+      type: Number,
+      default: 0,
+    },
+    phone_update_count: {
+      type: Number,
+      default: 0,
     },
   },
   {

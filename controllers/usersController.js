@@ -11,6 +11,7 @@ const createUser = async (req, res, next) => {
       name,
       email,
       phone,
+      profile_image,
       password,
       role,
       is_email_verified = false,
@@ -42,6 +43,7 @@ const createUser = async (req, res, next) => {
       name,
       email: normalizedEmail,
       phone: phone || null,
+      profile_image: profile_image || null,
       password,
       role: resolvedRole,
       is_email_verified,
@@ -55,6 +57,7 @@ const createUser = async (req, res, next) => {
         name: user.name,
         email: user.email,
         phone: user.phone,
+        profile_image: user.profile_image,
         role: user.role,
         is_email_verified: user.is_email_verified,
         is_phone_verified: user.is_phone_verified,
@@ -101,6 +104,7 @@ const updateUser = async (req, res, next) => {
       name,
       email,
       phone,
+      profile_image,
       password,
       role,
       is_email_verified,
@@ -113,16 +117,22 @@ const updateUser = async (req, res, next) => {
     }
 
     const normalizedEmail = email !== undefined ? normalizeEmail(email) : undefined;
-
     if (normalizedEmail !== undefined && normalizedEmail !== user.email) {
-      const emailExists = await User.findOne({ email: normalizedEmail, _id: { $ne: userId } });
-      if (emailExists) {
-        return res.status(409).json({ error: 'Email is already in use' });
+      return res.status(400).json({ error: 'Email cannot be updated' });
+    }
+
+    if (name !== undefined && name !== user.name) {
+      if (user.name_update_count >= 2) {
+        return res.status(400).json({ error: 'Name can only be updated 2 times' });
       }
-      user.email = normalizedEmail;
+      user.name = name;
+      user.name_update_count += 1;
     }
 
     if (phone !== undefined && phone !== user.phone) {
+      if (user.phone_update_count >= 2) {
+        return res.status(400).json({ error: 'Phone can only be updated 2 times' });
+      }
       if (phone) {
         const phoneExists = await User.findOne({ phone, _id: { $ne: userId } });
         if (phoneExists) {
@@ -130,11 +140,20 @@ const updateUser = async (req, res, next) => {
         }
       }
       user.phone = phone || null;
+      user.phone_update_count += 1;
     }
 
-    if (name !== undefined) user.name = name;
+    if (profile_image !== undefined) user.profile_image = profile_image || null;
     if (password !== undefined && password !== '') user.password = password;
-    if (role !== undefined) user.role = role;
+    if (role !== undefined) {
+      const normalizedRole = normalizeRole(role);
+      if (!ALLOWED_ROLES.includes(normalizedRole)) {
+        return res.status(400).json({
+          error: 'Invalid role. Allowed roles: normaluser, admin, administrator',
+        });
+      }
+      user.role = normalizedRole;
+    }
     if (is_email_verified !== undefined) user.is_email_verified = Boolean(is_email_verified);
     if (is_phone_verified !== undefined) user.is_phone_verified = Boolean(is_phone_verified);
 
