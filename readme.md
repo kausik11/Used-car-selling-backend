@@ -35,3 +35,22 @@ Example calls
 /cars?transmission=manual&city=Kolkata
 /cars?city=Kolkata&price_lakh_min=4&price_lakh_max=5
 Validation done: controller loads successfully with Node (no syntax errors).
+
+Vercel deployment
+1. Ensure `vercel.json` exists in project root and routes to `index.js`.
+2. Set these environment variables in Vercel Project Settings:
+   - `MONGO_URI`
+   - `JWT_SECRET`
+   - `JWT_EXPIRES_IN`
+   - `GMAIL_USER`
+   - `GMAIL_PASS`
+3. Deploy the `Singh_backend` folder to Vercel.
+4. Test health endpoint after deploy:
+   - `GET /api/healthz`
+
+Expected health response:
+{
+  "status": "ok",
+  "service": "singh_backend",
+  "timestamp": "2026-01-01T00:00:00.000Z"
+}
