@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
+const User = require('../models/User');
 
-const authMiddleware = (req, res, next) => {
+const authMiddleware = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -15,7 +16,22 @@ const authMiddleware = (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, jwtSecret);
-    req.user = decoded;
+    const user = await User.findById(decoded.id).select('_id role auth_session_version');
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid token user' });
+    }
+
+    const tokenSessionVersion = decoded.sessionVersion || 0;
+    const currentSessionVersion = user.auth_session_version || 0;
+    if (tokenSessionVersion !== currentSessionVersion) {
+      return res.status(401).json({ error: 'Session expired due to login on another device' });
+    }
+
+    req.user = {
+      ...decoded,
+      id: user._id.toString(),
+      role: user.role,
+    };
 
     return next();
   } catch (error) {

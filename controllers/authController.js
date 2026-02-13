@@ -17,9 +17,17 @@ const generateToken = (user) => {
     throw error;
   }
 
-  return jwt.sign({ id: user._id, role: user.role }, jwtSecret, {
-    expiresIn: jwtExpiresIn,
-  });
+  return jwt.sign(
+    {
+      id: user._id,
+      role: user.role,
+      sessionVersion: user.auth_session_version || 0,
+    },
+    jwtSecret,
+    {
+      expiresIn: jwtExpiresIn,
+    }
+  );
 };
 
 const getTransporter = () => {
@@ -113,6 +121,10 @@ const login = async (req, res, next) => {
     if (!isPasswordValid) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
+
+    // Rotate session version so previous tokens are invalidated.
+    user.auth_session_version = (user.auth_session_version || 0) + 1;
+    await user.save();
 
     const token = generateToken(user);
     return res.status(200).json({
@@ -210,8 +222,11 @@ const verifyOtp = async (req, res, next) => {
       });
     } else if (!user.is_email_verified) {
       user.is_email_verified = true;
-      await user.save();
     }
+
+    // Rotate session version so previous tokens are invalidated.
+    user.auth_session_version = (user.auth_session_version || 0) + 1;
+    await user.save();
 
     await Otp.deleteOne({ _id: otpRecord._id });
 

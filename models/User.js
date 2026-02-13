@@ -40,6 +40,10 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    auth_session_version: {
+      type: Number,
+      default: 0,
+    },
     name_update_count: {
       type: Number,
       default: 0,
