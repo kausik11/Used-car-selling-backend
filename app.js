@@ -18,6 +18,15 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
+// Vercel health check endpoint
+app.get('/api/healthz', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    service: 'singh_backend',
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // authentication routes
 app.use('/api/auth', authRouter);
 app.get('/api/profile', authMiddleware, getProfile);
