@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 
 const userSchema = new mongoose.Schema(
   {
@@ -12,7 +13,7 @@ const userSchema = new mongoose.Schema(
       trim: true,
       lowercase: true,
       unique: true,
-      sparse: true,
+      required: [true, 'Email is required'],
     },
     phone: {
       type: String,
@@ -30,10 +31,28 @@ const userSchema = new mongoose.Schema(
       enum: ['normaluser', 'admin', 'administrator'],
       default: 'normaluser',
     },
+    is_email_verified: {
+      type: Boolean,
+      default: false,
+    },
+    is_phone_verified: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,
   }
 );
+
+// Ensure password is always hashed before saving.
+userSchema.pre('save', async function hashPassword(next) {
+  if (!this.isModified('password')) {
+    return next();
+  }
+
+  this.password = await bcrypt.hash(this.password, 10);
+  return next();
+});
 
 module.exports = mongoose.model('User', userSchema);

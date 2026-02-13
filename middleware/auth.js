@@ -31,7 +31,15 @@ const adminOnly = (req, res, next) => {
   return next();
 };
 
-const adminOrAdministator = (req, res, next) => {
+const administratorOnly = (req, res, next) => {
+  if (!req.user || req.user.role !== 'administrator') {
+    return res.status(403).json({ error: 'Administrator access required' });
+  }
+
+  return next();
+};
+
+const adminOrAdministrator = (req, res, next) => {
   if (!req.user || !['admin', 'administrator'].includes(req.user.role)) {
     return res.status(403).json({ error: 'Admin or administrator access required' });
   }
@@ -39,8 +47,13 @@ const adminOrAdministator = (req, res, next) => {
   return next();
 };
 
+// Backward-compatible alias for previous misspelled export.
+const adminOrAdministator = adminOrAdministrator;
+
 module.exports = {
   authMiddleware,
   adminOnly,
+  administratorOnly,
+  adminOrAdministrator,
   adminOrAdministator,
 };

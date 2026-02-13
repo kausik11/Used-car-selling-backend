@@ -14,4 +14,5 @@ module.exports = {
   SellCar: require('./SellCar'),
   TestDriveBooking: require('./TestDriveBooking'),
   User: require('./User'),
+  Otp: require('./Otp'),
 };

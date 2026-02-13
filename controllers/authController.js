@@ -1,6 +1,11 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const nodemailer = require('nodemailer');
 const User = require('../models/User');
+const Otp = require('../models/Otp');
+
+const OTP_EXPIRY_MINUTES = 10;
+const MAX_OTP_ATTEMPTS = 5;
 
 const generateToken = (user) => {
   const jwtSecret = process.env.JWT_SECRET;
@@ -12,43 +17,61 @@ const generateToken = (user) => {
     throw error;
   }
 
-  return jwt.sign({ userId: user._id, role: user.role }, jwtSecret, {
+  return jwt.sign({ id: user._id, role: user.role }, jwtSecret, {
     expiresIn: jwtExpiresIn,
   });
 };
 
+const getTransporter = () => {
+  const gmailUser = process.env.GMAIL_USER;
+  const gmailPass = process.env.GMAIL_PASS;
+
+  if (!gmailUser || !gmailPass) {
+    const error = new Error('GMAIL_USER or GMAIL_PASS is not configured');
+    error.statusCode = 500;
+    throw error;
+  }
+
+  return nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: gmailUser,
+      pass: gmailPass,
+    },
+  });
+};
+
+const normalizeEmail = (email) => (email || '').trim().toLowerCase();
+
 const register = async (req, res, next) => {
   try {
-    const { name, email, phone, password, role } = req.body;
+    const { name, email, phone, password } = req.body;
+    const normalizedEmail = normalizeEmail(email);
 
-    if (!name || !phone || !password) {
+    if (!name || !normalizedEmail || !phone || !password) {
       return res.status(400).json({
-        error: 'name, phone and password are required',
+        error: 'name, email, phone and password are required',
       });
     }
 
     const existingUser = await User.findOne({
-      $or: [{ phone }, ...(email ? [{ email: email.toLowerCase() }] : [])],
+      $or: [{ email: normalizedEmail }, { phone }],
     });
-
     if (existingUser) {
-      return res.status(409).json({
-        error: 'User with this phone or email already exists',
-      });
+      return res.status(409).json({ error: 'User with this email or phone already exists' });
     }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await User.create({
       name,
-      email,
+      email: normalizedEmail,
       phone,
-      password: hashedPassword,
-      role,
+      password,
+      role: 'normaluser',
+      is_email_verified: false,
+      is_phone_verified: false,
     });
 
     const token = generateToken(user);
-
     return res.status(201).json({
       message: 'User registered successfully',
       token,
@@ -58,6 +81,8 @@ const register = async (req, res, next) => {
         email: user.email,
         phone: user.phone,
         role: user.role,
+        is_email_verified: user.is_email_verified,
+        is_phone_verified: user.is_phone_verified,
       },
     });
   } catch (error) {
@@ -67,15 +92,16 @@ const register = async (req, res, next) => {
 
 const login = async (req, res, next) => {
   try {
-    const { phone, password } = req.body;
+    const { email, password } = req.body;
+    const normalizedEmail = normalizeEmail(email);
 
-    if (!phone || !password) {
+    if (!normalizedEmail || !password) {
       return res.status(400).json({
-        error: 'phone and password are required',
+        error: 'email and password are required',
       });
     }
 
-    const user = await User.findOne({ phone });
+    const user = await User.findOne({ email: normalizedEmail });
     if (!user) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
@@ -86,7 +112,6 @@ const login = async (req, res, next) => {
     }
 
     const token = generateToken(user);
-
     return res.status(200).json({
       message: 'Login successful',
       token,
@@ -96,6 +121,109 @@ const login = async (req, res, next) => {
         email: user.email,
         phone: user.phone,
         role: user.role,
+        is_email_verified: user.is_email_verified,
+        is_phone_verified: user.is_phone_verified,
+      },
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const sendOtp = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    const normalizedEmail = normalizeEmail(email);
+
+    if (!normalizedEmail) {
+      return res.status(400).json({ error: 'email is required' });
+    }
+
+    // 6-digit numeric OTP
+    const rawOtp = `${Math.floor(100000 + Math.random() * 900000)}`;
+    const hashedOtp = await bcrypt.hash(rawOtp, 10);
+    const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
+
+    await Otp.findOneAndUpdate(
+      { email: normalizedEmail },
+      { otp: hashedOtp, expiresAt, attempts: 0 },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    const transporter = getTransporter();
+    await transporter.sendMail({
+      from: process.env.GMAIL_USER,
+      to: normalizedEmail,
+      subject: 'Your OTP Code',
+      text: `Your OTP is ${rawOtp}. It expires in ${OTP_EXPIRY_MINUTES} minutes.`,
+    });
+
+    return res.status(200).json({ message: 'OTP sent successfully' });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const verifyOtp = async (req, res, next) => {
+  try {
+    const { email, otp } = req.body;
+    const normalizedEmail = normalizeEmail(email);
+
+    if (!normalizedEmail || !otp) {
+      return res.status(400).json({ error: 'email and otp are required' });
+    }
+
+    const otpRecord = await Otp.findOne({ email: normalizedEmail });
+    if (!otpRecord) {
+      return res.status(400).json({ error: 'OTP not found or expired' });
+    }
+
+    if (otpRecord.expiresAt < new Date()) {
+      await Otp.deleteOne({ _id: otpRecord._id });
+      return res.status(400).json({ error: 'OTP has expired' });
+    }
+
+    if (otpRecord.attempts >= MAX_OTP_ATTEMPTS) {
+      return res.status(429).json({ error: 'Maximum OTP attempts exceeded' });
+    }
+
+    const isOtpValid = await bcrypt.compare(String(otp), otpRecord.otp);
+    if (!isOtpValid) {
+      otpRecord.attempts += 1;
+      await otpRecord.save();
+      return res.status(401).json({ error: 'Invalid OTP' });
+    }
+
+    let user = await User.findOne({ email: normalizedEmail });
+    if (!user) {
+      const generatedPassword = `otp_user_${Date.now()}`;
+      user = await User.create({
+        name: normalizedEmail.split('@')[0],
+        email: normalizedEmail,
+        phone: `otp-${Date.now()}`,
+        password: generatedPassword,
+        role: 'normaluser',
+        is_email_verified: true,
+      });
+    } else if (!user.is_email_verified) {
+      user.is_email_verified = true;
+      await user.save();
+    }
+
+    await Otp.deleteOne({ _id: otpRecord._id });
+
+    const token = generateToken(user);
+    return res.status(200).json({
+      message: 'OTP verified successfully',
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        is_email_verified: user.is_email_verified,
+        is_phone_verified: user.is_phone_verified,
       },
     });
   } catch (error) {
@@ -105,7 +233,8 @@ const login = async (req, res, next) => {
 
 const getProfile = async (req, res, next) => {
   try {
-    const user = await User.findById(req.user.userId).select('-password');
+    const userId = req.user.id || req.user.userId;
+    const user = await User.findById(userId).select('-password');
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
@@ -119,5 +248,7 @@ const getProfile = async (req, res, next) => {
 module.exports = {
   register,
   login,
+  sendOtp,
+  verifyOtp,
   getProfile,
 };
