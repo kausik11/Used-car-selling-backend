@@ -200,10 +200,10 @@ const verifyOtp = async (req, res, next) => {
       user = await User.create({
         name: normalizedEmail.split('@')[0],
         email: normalizedEmail,
-        phone: `otp-${Date.now()}`,
         password: generatedPassword,
         role: 'normaluser',
         is_email_verified: true,
+        is_phone_verified: false,
       });
     } else if (!user.is_email_verified) {
       user.is_email_verified = true;

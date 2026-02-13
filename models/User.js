@@ -18,8 +18,9 @@ const userSchema = new mongoose.Schema(
     phone: {
       type: String,
       trim: true,
-      required: [true, 'Phone is required'],
       unique: true,
+      sparse: true,
+      default: null,
     },
     password: {
       type: String,
