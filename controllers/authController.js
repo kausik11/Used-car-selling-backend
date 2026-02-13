@@ -167,10 +167,34 @@ const sendOtp = async (req, res, next) => {
 
     const transporter = getTransporter();
     await transporter.sendMail({
-      from: process.env.GMAIL_USER,
+      from: `"Singh Group" <${process.env.GMAIL_USER}>`,
       to: normalizedEmail,
-      subject: 'Your OTP Code',
-      text: `Your OTP is ${rawOtp}. It expires in ${OTP_EXPIRY_MINUTES} minutes.`,
+      subject: 'Singh Group - Your Login OTP Code',
+      text: `Hello,
+
+Your One-Time Password (OTP) for Singh Group login is: ${rawOtp}
+
+This OTP will expire in ${OTP_EXPIRY_MINUTES} minutes.
+
+If you did not request this OTP, please ignore this email. Do not share this code with anyone.
+
+Thanks,
+Singh Group`,
+      html: `
+        <div style="font-family: Arial, sans-serif; color: #1f2937; line-height: 1.6;">
+          <h2 style="margin: 0 0 12px; color: #111827;">Singh Group</h2>
+          <p style="margin: 0 0 12px;">Hello,</p>
+          <p style="margin: 0 0 12px;">Your One-Time Password (OTP) for login is:</p>
+          <p style="margin: 0 0 16px; font-size: 28px; font-weight: 700; letter-spacing: 4px; color: #111827;">
+            ${rawOtp}
+          </p>
+          <p style="margin: 0 0 12px;">This OTP is valid for <strong>${OTP_EXPIRY_MINUTES} minutes</strong>.</p>
+          <p style="margin: 0 0 12px; color: #b91c1c;">
+            If you did not request this OTP, please ignore this email and do not share this code with anyone.
+          </p>
+          <p style="margin: 16px 0 0;">Thanks,<br/>Singh Group</p>
+        </div>
+      `,
     });
 
     return res.status(200).json({ message: 'OTP sent successfully' });
