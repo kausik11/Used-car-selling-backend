@@ -13,4 +13,5 @@ module.exports = {
   Faq: require('./Faq'),
   SellCar: require('./SellCar'),
   TestDriveBooking: require('./TestDriveBooking'),
+  User: require('./User'),
 };

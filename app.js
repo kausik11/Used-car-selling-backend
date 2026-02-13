@@ -5,6 +5,9 @@ const loveStoriesRouter = require('./routes/loveStories');
 const faqsRouter = require('./routes/faqs');
 const sellCarsRouter = require('./routes/sellCars');
 const testDrivesRouter = require('./routes/testDrives');
+const authRouter = require('./routes/auth');
+const { authMiddleware } = require('./middleware/auth');
+const { getProfile } = require('./controllers/authController');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
@@ -14,6 +17,10 @@ app.use(express.json({ limit: '2mb' }));
 app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
+
+// authentication routes
+app.use('/api/auth', authRouter);
+app.get('/api/profile', authMiddleware, getProfile);
 
 // car related routes
 app.use('/api/v1', carsRouter);
