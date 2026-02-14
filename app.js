@@ -7,6 +7,7 @@ const faqsRouter = require('./routes/faqs');
 const sellCarsRouter = require('./routes/sellCars');
 const testDrivesRouter = require('./routes/testDrives');
 const callbackRequestsRouter = require('./routes/callbackRequests');
+const newsletterRoutes = require('./routes/newsletter');
 const authRouter = require('./routes/auth');
 const usersRouter = require('./routes/users');
 const { authMiddleware } = require('./middleware/auth');
@@ -69,6 +70,7 @@ app.use('/api/v1', sellCarsRouter);
 app.use('/api/v1', testDrivesRouter);
 app.use('/api/v1', callbackRequestsRouter);
 app.use('/api/v1', usersRouter);
+app.use('/api/v1/newsletter', newsletterRoutes);
 
 app.use(errorHandler);
 
