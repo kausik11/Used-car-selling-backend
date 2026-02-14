@@ -15,6 +15,7 @@ module.exports = {
   TestDriveBooking: require('./TestDriveBooking'),
   CallbackRequest: require('./CallbackRequest'),
   Newsletter: require('./Newsletter'),
+  Testimonial: require('./Testimonial'),
   User: require('./User'),
   Otp: require('./Otp'),
   RecentCarView: require('./RecentCarView'),
