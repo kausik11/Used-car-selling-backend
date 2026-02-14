@@ -13,6 +13,7 @@ module.exports = {
   Faq: require('./Faq'),
   SellCar: require('./SellCar'),
   TestDriveBooking: require('./TestDriveBooking'),
+  CallbackRequest: require('./CallbackRequest'),
   User: require('./User'),
   Otp: require('./Otp'),
   RecentCarView: require('./RecentCarView'),
