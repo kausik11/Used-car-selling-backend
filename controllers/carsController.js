@@ -262,6 +262,54 @@ const parseFeatures = (featuresParam) => {
   return [];
 };
 
+const normalizeImagePayload = (image = {}, index = 0) => {
+  const normalizedViewType = ['gallery', 'exterior_360', 'interior_360'].includes(image?.view_type)
+    ? image.view_type
+    : 'gallery';
+  const normalizedCategory = image?.gallery_category || image?.kind || 'other';
+
+  const baseImage = {
+    url: image?.url,
+    view_type: normalizedViewType,
+    gallery_category: normalizedCategory,
+    sort_order: Number.isFinite(Number(image?.sort_order)) ? Number(image.sort_order) : index + 1,
+  };
+
+  if (normalizedViewType === 'gallery') {
+    baseImage.kind = image?.kind || normalizedCategory;
+  }
+
+  return baseImage;
+};
+
+const mergeMediaImages = (existingImages = [], incomingImages = []) => {
+  const existingNormalized = (Array.isArray(existingImages) ? existingImages : []).map((image, index) =>
+    normalizeImagePayload(image, index)
+  );
+  const incomingNormalized = (Array.isArray(incomingImages) ? incomingImages : []).map((image, index) =>
+    normalizeImagePayload(image, index)
+  );
+
+  const existingGallery = existingNormalized.filter((image) => image.view_type === 'gallery');
+  let exterior360 = existingNormalized.find((image) => image.view_type === 'exterior_360') || null;
+  let interior360 = existingNormalized.find((image) => image.view_type === 'interior_360') || null;
+
+  const incomingGallery = incomingNormalized.filter((image) => image.view_type === 'gallery');
+  incomingNormalized.forEach((image) => {
+    if (image.view_type === 'exterior_360') exterior360 = image;
+    if (image.view_type === 'interior_360') interior360 = image;
+  });
+
+  const merged = [...existingGallery, ...incomingGallery];
+  if (exterior360) merged.push(exterior360);
+  if (interior360) merged.push(interior360);
+
+  return merged.map((image, index) => ({
+    ...image,
+    sort_order: index + 1,
+  }));
+};
+
 const createCar = async (req, res, next) => {
   try {
     const {
@@ -674,16 +722,32 @@ const uploadMedia = async (req, res, next) => {
 
     const uploadedReport = reportFiles[0] ? { url: reportFiles[0].path, type: 'pdf' } : null;
 
+    let parsedBodyImages = [];
+    if (Array.isArray(bodyImages)) {
+      parsedBodyImages = bodyImages;
+    } else if (typeof bodyImages === 'string' && bodyImages.trim()) {
+      try {
+        const parsed = JSON.parse(bodyImages);
+        if (Array.isArray(parsed)) parsedBodyImages = parsed;
+      } catch (parseError) {
+        parsedBodyImages = [];
+      }
+    }
+
+    const existingMedia = await Media.findOne({ car_id }).lean();
+    const incomingImages = uploadedImages.length > 0 ? uploadedImages : parsedBodyImages;
+    const mergedImages = mergeMediaImages(existingMedia?.images || [], incomingImages);
+    const resolvedInspectionReport =
+      uploadedReport || bodyReport || existingMedia?.inspection_report || undefined;
+
     const media = await Media.findOneAndUpdate(
       { car_id },
       {
-        $set: {
+        $set: cleanUndefined({
           car_id,
-          ...(uploadedImages.length > 0 ? { images: uploadedImages } : {}),
-          ...(uploadedReport ? { inspection_report: uploadedReport } : {}),
-          ...(bodyImages ? { images: bodyImages } : {}),
-          ...(bodyReport ? { inspection_report: bodyReport } : {}),
-        },
+          images: mergedImages,
+          inspection_report: resolvedInspectionReport,
+        }),
       },
       { new: true, upsert: true, runValidators: true, context: 'query' }
     );

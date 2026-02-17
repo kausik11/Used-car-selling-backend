@@ -13,10 +13,31 @@ const storage = new CloudinaryStorage({
   params: (req, file) => {
     const { car_id } = req.params;
     const isReport = file.fieldname === 'inspection_report';
+    const rootFolder = `used_cars/${car_id}`;
+
+    // Map image uploads into subfolders:
+    // used_cars/<car_id>/gallery
+    // used_cars/<car_id>/exterior_360
+    // used_cars/<car_id>/interior_360
+    if (!req._carImageUploadIndex) {
+      req._carImageUploadIndex = 0;
+    }
+
+    let imageFolder = 'gallery';
+    if (file.fieldname === 'images') {
+      const imageIndex = req._carImageUploadIndex;
+      req._carImageUploadIndex += 1;
+      const rawViewType = req.body?.[`images_view_type_${imageIndex}`];
+      const normalizedViewType = String(rawViewType || 'gallery').trim().toLowerCase();
+      if (['gallery', 'exterior_360', 'interior_360'].includes(normalizedViewType)) {
+        imageFolder = normalizedViewType;
+      }
+    }
+
     return {
-      folder: `used_cars/${car_id}`,
+      folder: isReport ? `${rootFolder}/inspection_report` : `${rootFolder}/${imageFolder}`,
       resource_type: isReport ? 'raw' : 'image',
-      public_id: `${file.fieldname}-${Date.now()}`,
+      public_id: `${file.fieldname}-${Date.now()}-${Math.round(Math.random() * 1e6)}`,
     };
   },
 });
