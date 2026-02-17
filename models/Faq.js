@@ -19,6 +19,7 @@ const FaqSchema = new mongoose.Schema(
     answer: { type: String, required: true, trim: true, maxlength: 10000 },
     link: { type: String, trim: true, maxlength: 2000 },
     image: { type: String, trim: true, maxlength: 2000 },
+    imagePublicId: { type: String, trim: true, default: null },
   },
   { timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } }
 );
