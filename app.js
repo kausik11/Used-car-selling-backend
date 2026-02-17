@@ -17,7 +17,7 @@ const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
 
-const defaultAllowedOrigins = ['http://localhost:5173', 'http://localhost:5174'];
+const defaultAllowedOrigins = ['http://localhost:5173', 'http://localhost:5174','https://used-car-selling-admin.vercel.app'];
 const envAllowedOrigins = (process.env.CORS_ALLOWED_ORIGINS || '')
   .split(',')
   .map((origin) => origin.trim())
