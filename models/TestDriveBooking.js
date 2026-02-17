@@ -17,6 +17,8 @@ const TEST_DRIVE_SLOTS = [
 const TestDriveBookingSchema = new mongoose.Schema(
   {
     car_id: { type: String, required: true, index: true },
+    customerName: { type: String, required: true, trim: true },
+    customerPhone: { type: String, required: true, trim: true, match: /^[0-9]{10}$/ },
 
     hub_location: {
       type: String,

@@ -40,9 +40,14 @@ const getDateRange = (date) => {
   return { start, end };
 };
 
-const validateBookingInput = ({ car_id, hub_location, date, time_slot }) => {
-  if (!car_id || !hub_location || !date || !time_slot) {
-    return 'car_id, hub_location, date and time_slot are required';
+const isValidPhone = (value) => /^[0-9]{10}$/.test(String(value || '').trim());
+
+const validateBookingInput = ({ car_id, customerName, customerPhone, hub_location, date, time_slot }) => {
+  if (!car_id || !customerName || !customerPhone || !hub_location || !date || !time_slot) {
+    return 'car_id, customerName, customerPhone, hub_location, date and time_slot are required';
+  }
+  if (!isValidPhone(customerPhone)) {
+    return 'customerPhone must be a 10-digit number';
   }
   if (String(hub_location).trim() !== FIXED_HUB_LOCATION) {
     return `hub_location must be exactly "${FIXED_HUB_LOCATION}"`;
@@ -55,8 +60,15 @@ const validateBookingInput = ({ car_id, hub_location, date, time_slot }) => {
 
 const createTestDriveBooking = async (req, res, next) => {
   try {
-    const { car_id, hub_location, date, time_slot } = req.body || {};
-    const validationError = validateBookingInput({ car_id, hub_location, date, time_slot });
+    const { car_id, customerName, customerPhone, hub_location, date, time_slot } = req.body || {};
+    const validationError = validateBookingInput({
+      car_id,
+      customerName,
+      customerPhone,
+      hub_location,
+      date,
+      time_slot,
+    });
     if (validationError) return res.status(400).json({ error: validationError });
 
     const parsedDate = parseDateOnly(date);
@@ -73,6 +85,8 @@ const createTestDriveBooking = async (req, res, next) => {
 
     const booking = await TestDriveBooking.create({
       car_id,
+      customerName: String(customerName).trim(),
+      customerPhone: String(customerPhone).trim(),
       hub_location,
       date: parsedDate,
       time_slot,
@@ -145,6 +159,14 @@ const updateTestDriveBooking = async (req, res, next) => {
     const { booking_id } = req.params;
     const updates = {};
 
+    if (req.body?.customerName !== undefined) updates.customerName = String(req.body.customerName).trim();
+    if (req.body?.customerPhone !== undefined) {
+      const phone = String(req.body.customerPhone).trim();
+      if (!isValidPhone(phone)) {
+        return res.status(400).json({ error: 'customerPhone must be a 10-digit number' });
+      }
+      updates.customerPhone = phone;
+    }
     if (req.body?.hub_location !== undefined) {
       if (String(req.body.hub_location).trim() !== FIXED_HUB_LOCATION) {
         return res.status(400).json({
