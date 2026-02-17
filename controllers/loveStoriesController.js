@@ -1,9 +1,39 @@
 const { LoveStory } = require('../models');
+const { cloudinary } = require('../config/cloudinary');
+
+const uploadImage = async (file) => {
+  const base64Image = `data:${file.mimetype};base64,${file.buffer.toString('base64')}`;
+
+  const uploadResult = await cloudinary.uploader.upload(base64Image, {
+    folder: 'singhbackend/love-stories',
+    resource_type: 'auto',
+  });
+
+  return {
+    imageUrl: uploadResult.secure_url,
+    imagePublicId: uploadResult.public_id,
+  };
+};
 
 const createLoveStory = async (req, res, next) => {
   try {
-    const { image, title, description } = req.body || {};
-    const created = await LoveStory.create({ image, title, description });
+    const { title, description } = req.body || {};
+    if (!title || !description) {
+      return res.status(400).json({ error: 'title and description are required' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'image file is required' });
+    }
+
+    const { imageUrl, imagePublicId } = await uploadImage(req.file);
+
+    const created = await LoveStory.create({
+      image: imageUrl,
+      imagePublicId,
+      title,
+      description,
+    });
     return res.status(201).json(created);
   } catch (err) {
     return next(err);
@@ -47,24 +77,37 @@ const getLoveStory = async (req, res, next) => {
 const updateLoveStory = async (req, res, next) => {
   try {
     const { story_id } = req.params;
-    const updates = {};
+    const story = await LoveStory.findById(story_id);
+    if (!story) return res.status(404).json({ error: 'Love story not found' });
 
-    if (req.body?.image !== undefined) updates.image = req.body.image;
-    if (req.body?.title !== undefined) updates.title = req.body.title;
-    if (req.body?.description !== undefined) updates.description = req.body.description;
+    let changed = false;
 
-    if (Object.keys(updates).length === 0) {
+    if (req.body?.title !== undefined) {
+      story.title = req.body.title;
+      changed = true;
+    }
+    if (req.body?.description !== undefined) {
+      story.description = req.body.description;
+      changed = true;
+    }
+
+    if (req.file) {
+      const { imageUrl, imagePublicId } = await uploadImage(req.file);
+      if (story.imagePublicId) {
+        await cloudinary.uploader.destroy(story.imagePublicId);
+      }
+      story.image = imageUrl;
+      story.imagePublicId = imagePublicId;
+      changed = true;
+    }
+
+    if (!changed) {
       return res.status(400).json({ error: 'No valid fields provided for update' });
     }
 
-    const updated = await LoveStory.findByIdAndUpdate(
-      story_id,
-      { $set: updates },
-      { new: true, runValidators: true, context: 'query' }
-    );
-    if (!updated) return res.status(404).json({ error: 'Love story not found' });
+    await story.save();
 
-    return res.json(updated);
+    return res.json(story);
   } catch (err) {
     return next(err);
   }
@@ -73,9 +116,15 @@ const updateLoveStory = async (req, res, next) => {
 const deleteLoveStory = async (req, res, next) => {
   try {
     const { story_id } = req.params;
-    const deleted = await LoveStory.findByIdAndDelete(story_id);
-    if (!deleted) return res.status(404).json({ error: 'Love story not found' });
-    return res.json({ message: 'Love story deleted successfully', story_id: deleted._id });
+    const story = await LoveStory.findById(story_id);
+    if (!story) return res.status(404).json({ error: 'Love story not found' });
+
+    if (story.imagePublicId) {
+      await cloudinary.uploader.destroy(story.imagePublicId);
+    }
+
+    await story.deleteOne();
+    return res.json({ message: 'Love story deleted successfully', story_id: story._id });
   } catch (err) {
     return next(err);
   }
