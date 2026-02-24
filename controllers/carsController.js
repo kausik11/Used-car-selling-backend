@@ -156,17 +156,17 @@ const enrichFeaturesWithDescriptions = (featuresPayload) => {
   return enriched;
 };
 
-const getUniqueListingRef = async () => {
+const getUniqueListingRef = async (session) => {
   for (let i = 0; i < 12; i += 1) {
     const candidate = createListingRef();
-    const exists = await CarListing.exists({ listing_ref: candidate });
+    const exists = await CarListing.exists({ listing_ref: candidate }).session(session || null);
     if (!exists) return candidate;
   }
   return `${Date.now()}`.slice(-8);
 };
 
-const buildSlugFields = async (listing, existingRef) => {
-  const listing_ref = existingRef || listing.listing_ref || (await getUniqueListingRef());
+const buildSlugFields = async (listing, existingRef, session) => {
+  const listing_ref = existingRef || listing.listing_ref || (await getUniqueListingRef(session));
   const car_slug = slugifyPart(listing.car_slug) || buildCarSlug(listing);
   return {
     listing_ref,
@@ -184,12 +184,19 @@ const ensureListingSlugFields = async (listing) => {
   return { ...listing, ...slugFields };
 };
 
-const upsertByCarId = async (Model, car_id, payload) => {
+const upsertByCarId = async (Model, car_id, payload, session) => {
   if (!payload || typeof payload !== 'object') return null;
   return Model.findOneAndUpdate(
     { car_id },
     { $set: payload, $setOnInsert: { car_id } },
-    { new: true, upsert: true, runValidators: true, context: 'query', setDefaultsOnInsert: true }
+    {
+      new: true,
+      upsert: true,
+      runValidators: true,
+      context: 'query',
+      setDefaultsOnInsert: true,
+      session: session || null,
+    }
   );
 };
 
@@ -310,7 +317,65 @@ const mergeMediaImages = (existingImages = [], incomingImages = []) => {
   }));
 };
 
+const createCarGraph = async ({
+  car_id,
+  dimensions_capacity,
+  engine_transmission,
+  fuel_performance,
+  suspension_steering_brakes,
+  booking_policy,
+  featuresPayload,
+  tyres,
+  media,
+  listingData,
+  session,
+}) => {
+  const [
+    dimensionsDoc,
+    engineDoc,
+    fuelDoc,
+    suspensionDoc,
+    bookingDoc,
+    featuresDoc,
+    tyresDoc,
+    mediaDoc,
+  ] = await Promise.all([
+    upsertByCarId(DimensionsCapacity, car_id, dimensions_capacity, session),
+    upsertByCarId(EngineTransmission, car_id, engine_transmission, session),
+    upsertByCarId(FuelPerformance, car_id, fuel_performance, session),
+    upsertByCarId(SuspensionSteeringBrakes, car_id, suspension_steering_brakes, session),
+    upsertByCarId(BookingPolicy, car_id, booking_policy, session),
+    upsertByCarId(CarFeatures, car_id, featuresPayload, session),
+    upsertByCarId(Tyres, car_id, tyres, session),
+    upsertByCarId(Media, car_id, media, session),
+  ]);
+
+  const listingPayload = {
+    car_id,
+    ...listingData,
+    dimensions_capacity_id: dimensionsDoc ? dimensionsDoc._id : undefined,
+    engine_transmission_id: engineDoc ? engineDoc._id : undefined,
+    fuel_performance_id: fuelDoc ? fuelDoc._id : undefined,
+    suspension_steering_brakes_id: suspensionDoc ? suspensionDoc._id : undefined,
+    features_id: featuresDoc ? featuresDoc._id : undefined,
+    tyres_id: tyresDoc ? tyresDoc._id : undefined,
+    media_id: mediaDoc ? mediaDoc._id : undefined,
+    booking_policy_id: bookingDoc ? bookingDoc._id : undefined,
+  };
+
+  const slugFields = await buildSlugFields(listingPayload, undefined, session);
+  const listingDocument = cleanUndefined({ ...listingPayload, ...slugFields });
+
+  if (session) {
+    const [createdListing] = await CarListing.create([listingDocument], { session });
+    return createdListing;
+  }
+
+  return CarListing.create(listingDocument);
+};
+
 const createCar = async (req, res, next) => {
+  let session;
   try {
     const {
       car_id: inputCarId,
@@ -335,41 +400,48 @@ const createCar = async (req, res, next) => {
 
     const car_id = inputCarId || uuidv4();
     const featuresPayload = enrichFeaturesWithDescriptions(features);
+    let listing;
 
-    const [
-      dimensionsDoc,
-      engineDoc,
-      fuelDoc,
-      suspensionDoc,
-      bookingDoc,
-      featuresDoc,
-      tyresDoc,
-      mediaDoc,
-    ] = await Promise.all([
-      upsertByCarId(DimensionsCapacity, car_id, dimensions_capacity),
-      upsertByCarId(EngineTransmission, car_id, engine_transmission),
-      upsertByCarId(FuelPerformance, car_id, fuel_performance),
-      upsertByCarId(SuspensionSteeringBrakes, car_id, suspension_steering_brakes),
-      upsertByCarId(BookingPolicy, car_id, booking_policy),
-      upsertByCarId(CarFeatures, car_id, featuresPayload),
-      upsertByCarId(Tyres, car_id, tyres),
-      upsertByCarId(Media, car_id, media),
-    ]);
+    try {
+      session = await CarListing.startSession();
+      await session.withTransaction(async () => {
+        listing = await createCarGraph({
+          car_id,
+          dimensions_capacity,
+          engine_transmission,
+          fuel_performance,
+          suspension_steering_brakes,
+          booking_policy,
+          featuresPayload,
+          tyres,
+          media,
+          listingData,
+          session,
+        });
+      });
+    } catch (transactionError) {
+      const message = String(transactionError?.message || '');
+      const transactionUnsupported =
+        message.includes('Transaction numbers are only allowed on a replica set member or mongos') ||
+        message.includes('Transaction support is not enabled');
 
-    const listingPayload = {
-      car_id,
-      ...listingData,
-      dimensions_capacity_id: dimensionsDoc ? dimensionsDoc._id : undefined,
-      engine_transmission_id: engineDoc ? engineDoc._id : undefined,
-      fuel_performance_id: fuelDoc ? fuelDoc._id : undefined,
-      suspension_steering_brakes_id: suspensionDoc ? suspensionDoc._id : undefined,
-      features_id: featuresDoc ? featuresDoc._id : undefined,
-      tyres_id: tyresDoc ? tyresDoc._id : undefined,
-      media_id: mediaDoc ? mediaDoc._id : undefined,
-      booking_policy_id: bookingDoc ? bookingDoc._id : undefined,
-    };
-    const slugFields = await buildSlugFields(listingPayload);
-    const listing = await CarListing.create(cleanUndefined({ ...listingPayload, ...slugFields }));
+      if (!transactionUnsupported) {
+        throw transactionError;
+      }
+
+      listing = await createCarGraph({
+        car_id,
+        dimensions_capacity,
+        engine_transmission,
+        fuel_performance,
+        suspension_steering_brakes,
+        booking_policy,
+        featuresPayload,
+        tyres,
+        media,
+        listingData,
+      });
+    }
 
     return res.status(201).json({
       car_id: listing.car_id,
@@ -383,6 +455,10 @@ const createCar = async (req, res, next) => {
     });
   } catch (err) {
     return next(err);
+  } finally {
+    if (session) {
+      await session.endSession();
+    }
   }
 };
 
