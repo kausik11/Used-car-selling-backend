@@ -1,5 +1,8 @@
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const cookieParser = require('cookie-parser');
+const rateLimit = require('express-rate-limit');
 const carsRouter = require('./routes/cars');
 const reviewsRouter = require('./routes/reviews');
 const loveStoriesRouter = require('./routes/loveStories');
@@ -11,19 +14,31 @@ const newsletterRoutes = require('./routes/newsletter');
 const testimonialRoutes = require('./routes/testimonials');
 const authRouter = require('./routes/auth');
 const usersRouter = require('./routes/users');
-const { authMiddleware } = require('./middleware/auth');
-const { getProfile } = require('./controllers/authController');
+const { verifyJWT } = require('./middleware/verifyJWT');
+const { me } = require('./controllers/authController');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+}
 
-const defaultAllowedOrigins = ['http://localhost:5173', 'http://localhost:5174','https://used-car-selling-admin.vercel.app'];
+const defaultAllowedOrigins = ['http://localhost:5173', 'http://localhost:5174', 'https://used-car-selling-admin.vercel.app'];
 const envAllowedOrigins = (process.env.CORS_ALLOWED_ORIGINS || '')
   .split(',')
   .map((origin) => origin.trim())
   .filter(Boolean);
 const allowedOrigins = envAllowedOrigins.length > 0 ? envAllowedOrigins : defaultAllowedOrigins;
 
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: Number(process.env.AUTH_RATE_LIMIT_MAX) || 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.use(helmet());
+app.use(cookieParser());
 app.use(
   cors({
     origin(origin, callback) {
@@ -32,6 +47,7 @@ app.use(
       }
       return callback(new Error('Not allowed by CORS'));
     },
+    credentials: true,
   })
 );
 
@@ -59,8 +75,8 @@ app.get('/api/healthz', (req, res) => {
 });
 
 // authentication routes
-app.use('/api/auth', authRouter);
-app.get('/api/profile', authMiddleware, getProfile);
+app.use('/api/auth', authLimiter, authRouter);
+app.get('/api/profile', verifyJWT, me);
 
 // car related routes
 app.use('/api/v1', carsRouter);

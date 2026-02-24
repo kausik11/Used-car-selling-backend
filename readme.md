@@ -54,3 +54,19 @@ Expected health response:
   "service": "singh_backend",
   "timestamp": "2026-01-01T00:00:00.000Z"
 }
+
+Authentication endpoints
+- `POST /api/auth/register`
+- `POST /api/auth/login`
+- `POST /api/auth/google`
+- `POST /api/auth/refresh-token`
+- `POST /api/auth/logout`
+- `GET /api/auth/me`
+- `POST /api/auth/send-otp`
+- `POST /api/auth/verify-otp`
+
+Auth env notes
+- Access token defaults to `15m`
+- Refresh token defaults to `7d`
+- Refresh token is stored in HttpOnly cookie (`refreshToken` by default)
+- Configure Google client ids via `GOOGLE_CLIENT_IDS` (comma-separated)

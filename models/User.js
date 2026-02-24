@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const { normalizeRole } = require('../utils/roles');
 
 const userSchema = new mongoose.Schema(
   {
@@ -13,7 +14,26 @@ const userSchema = new mongoose.Schema(
       trim: true,
       lowercase: true,
       unique: true,
+      index: true,
       required: [true, 'Email is required'],
+    },
+    googleId: {
+      type: String,
+      trim: true,
+      unique: true,
+      sparse: true,
+      index: true,
+    },
+    avatar: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    provider: {
+      type: String,
+      enum: ['local', 'google'],
+      default: 'local',
+      index: true,
     },
     phone: {
       type: String,
@@ -24,13 +44,21 @@ const userSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      required: [true, 'Password is required'],
+      required() {
+        return this.provider === 'local';
+      },
       minlength: 6,
+      select: false,
     },
     role: {
       type: String,
-      enum: ['normaluser', 'admin', 'administrator'],
-      default: 'normaluser',
+      enum: ['user', 'admin', 'superadmin'],
+      default: 'user',
+      index: true,
+    },
+    isVerified: {
+      type: Boolean,
+      default: false,
     },
     is_email_verified: {
       type: Boolean,
@@ -44,6 +72,15 @@ const userSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    refreshTokenHash: {
+      type: String,
+      default: null,
+      select: false,
+    },
+    lastLogin: {
+      type: Date,
+      default: null,
+    },
     name_update_count: {
       type: Number,
       default: 0,
@@ -55,17 +92,26 @@ const userSchema = new mongoose.Schema(
     city: {
       type: String,
       trim: true,
-      required: [true, 'City is required'],
+      default: null,
+      required() {
+        return this.provider === 'local';
+      },
     },
     address: {
       type: String,
       trim: true,
-      required: [true, 'Address is required'],
+      default: null,
+      required() {
+        return this.provider === 'local';
+      },
     },
     pin: {
       type: String,
       trim: true,
-      required: [true, 'Pin is required'],
+      default: null,
+      required() {
+        return this.provider === 'local';
+      },
     },
     budgetRange: {
       type: String,
@@ -93,14 +139,43 @@ const userSchema = new mongoose.Schema(
   }
 );
 
+userSchema.pre('validate', function normalizeUserRole(next) {
+  if (this.role) {
+    this.role = normalizeRole(this.role) || 'user';
+  }
+  next();
+});
+
+userSchema.pre('save', function syncVerificationFields(next) {
+  if (this.isModified('is_email_verified')) {
+    this.isVerified = this.is_email_verified;
+  } else if (this.isModified('isVerified')) {
+    this.is_email_verified = this.isVerified;
+  }
+  next();
+});
+
 // Ensure password is always hashed before saving.
 userSchema.pre('save', async function hashPassword(next) {
-  if (!this.isModified('password')) {
+  if (!this.password || !this.isModified('password')) {
     return next();
   }
 
   this.password = await bcrypt.hash(this.password, 10);
   return next();
+});
+
+userSchema.methods.comparePassword = function comparePassword(plainPassword) {
+  if (!this.password) return false;
+  return bcrypt.compare(plainPassword, this.password);
+};
+
+userSchema.set('toJSON', {
+  transform(doc, ret) {
+    delete ret.password;
+    delete ret.refreshTokenHash;
+    return ret;
+  },
 });
 
 module.exports = mongoose.model('User', userSchema);
