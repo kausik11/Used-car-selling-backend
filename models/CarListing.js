@@ -25,6 +25,7 @@ const CarListingSchema = new mongoose.Schema(
       index: true,
     },
     title: { type: String, required: true },
+    description: { type: String, trim: true },
     brand: { type: String, required: true, index: true },
     model: { type: String, required: true, index: true },
     variant: { type: String },
@@ -81,7 +82,7 @@ const CarListingSchema = new mongoose.Schema(
   { timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } }
 );
 
-applyRequireAllFields(CarListingSchema);
+applyRequireAllFields(CarListingSchema, { excludePaths: ['description'] });
 
 CarListingSchema.index({ brand: 1, model: 1 });
 CarListingSchema.index({ city: 1, area: 1 });

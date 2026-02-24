@@ -387,6 +387,7 @@ const createCar = async (req, res, next) => {
       features,
       tyres,
       media,
+      description,
       ...listingData
     } = req.body || {};
 
@@ -400,6 +401,9 @@ const createCar = async (req, res, next) => {
 
     const car_id = inputCarId || uuidv4();
     const featuresPayload = enrichFeaturesWithDescriptions(features);
+    const normalizedDescription =
+      typeof description === 'string' ? description.trim() || undefined : description;
+    const listingPayloadData = { ...listingData, description: normalizedDescription };
     let listing;
 
     try {
@@ -415,7 +419,7 @@ const createCar = async (req, res, next) => {
           featuresPayload,
           tyres,
           media,
-          listingData,
+          listingData: listingPayloadData,
           session,
         });
       });
@@ -439,7 +443,7 @@ const createCar = async (req, res, next) => {
         featuresPayload,
         tyres,
         media,
-        listingData,
+        listingData: listingPayloadData,
       });
     }
 
