@@ -1,9 +1,19 @@
 const User = require('../models/User');
 const { CarListing, Media, RecentCarView } = require('../models');
+const { CANONICAL_ROLES, normalizeRole, resolveRoleForStorage, isAdminLike } = require('../utils/roles');
 
 const normalizeEmail = (email) => (email || '').trim().toLowerCase();
-const ALLOWED_ROLES = ['normaluser', 'admin', 'administrator'];
-const normalizeRole = (role) => (typeof role === 'string' ? role.trim().toLowerCase() : undefined);
+const ALLOWED_ROLES = CANONICAL_ROLES;
+
+const serializeUser = (userDoc) => {
+  const user = userDoc && typeof userDoc.toObject === 'function' ? userDoc.toObject() : userDoc;
+  if (!user) return user;
+
+  return {
+    ...user,
+    role: resolveRoleForStorage(user.role),
+  };
+};
 
 // Create a new user from admin panel.
 const createUser = async (req, res, next) => {
@@ -23,7 +33,7 @@ const createUser = async (req, res, next) => {
 
     const normalizedEmail = normalizeEmail(email);
     const normalizedRole = normalizeRole(role);
-    const resolvedRole = normalizedRole || 'normaluser';
+    const resolvedRole = normalizedRole || 'user';
     if (!name || !normalizedEmail || !password || !city || !address || !pin) {
       return res.status(400).json({
         error: 'name, email, password, city, address and pin are required',
@@ -31,7 +41,7 @@ const createUser = async (req, res, next) => {
     }
     if (!ALLOWED_ROLES.includes(resolvedRole)) {
       return res.status(400).json({
-        error: 'Invalid role. Allowed roles: normaluser, admin, administrator',
+        error: 'Invalid role. Allowed roles: user, admin, superadmin',
       });
     }
 
@@ -62,7 +72,7 @@ const createUser = async (req, res, next) => {
         name: user.name,
         email: user.email,
         phone: user.phone,
-        role: user.role,
+        role: resolveRoleForStorage(user.role),
         is_email_verified: user.is_email_verified,
         is_phone_verified: user.is_phone_verified,
         createdAt: user.createdAt,
@@ -78,7 +88,7 @@ const createUser = async (req, res, next) => {
 const listUsers = async (req, res, next) => {
   try {
     const users = await User.find().select('-password').sort({ createdAt: -1 });
-    return res.status(200).json(users);
+    return res.status(200).json(users.map((item) => serializeUser(item)));
   } catch (error) {
     return next(error);
   }
@@ -94,7 +104,7 @@ const getUser = async (req, res, next) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    return res.status(200).json(user);
+    return res.status(200).json(serializeUser(user));
   } catch (error) {
     return next(error);
   }
@@ -121,15 +131,15 @@ const updateUser = async (req, res, next) => {
       is_phone_verified,
     } = req.body;
 
-    const isAdminLike = ['admin', 'administrator'].includes(req.user?.role);
+    const userIsAdminLike = isAdminLike(req.user?.role);
     const isSelfUpdate = req.user?.id === userId;
-    if (!isAdminLike && !isSelfUpdate) {
+    if (!userIsAdminLike && !isSelfUpdate) {
       return res.status(403).json({ error: 'You can only update your own profile' });
     }
 
-    if (!isAdminLike && (role !== undefined || is_email_verified !== undefined || is_phone_verified !== undefined)) {
+    if (!userIsAdminLike && (role !== undefined || is_email_verified !== undefined || is_phone_verified !== undefined)) {
       return res.status(403).json({
-        error: 'Only admin or administrator can update role or verification flags',
+        error: 'Only admin or superadmin can update role or verification flags',
       });
     }
 
@@ -174,26 +184,23 @@ const updateUser = async (req, res, next) => {
     if (fuelType !== undefined) user.fuelType = fuelType || null;
     if (transmissionType !== undefined) user.transmissionType = transmissionType || null;
 
-    if (isAdminLike && role !== undefined) {
+    if (userIsAdminLike && role !== undefined) {
       const normalizedRole = normalizeRole(role);
       if (!ALLOWED_ROLES.includes(normalizedRole)) {
         return res.status(400).json({
-          error: 'Invalid role. Allowed roles: normaluser, admin, administrator',
+          error: 'Invalid role. Allowed roles: user, admin, superadmin',
         });
       }
       user.role = normalizedRole;
     }
-    if (isAdminLike && is_email_verified !== undefined) user.is_email_verified = Boolean(is_email_verified);
-    if (isAdminLike && is_phone_verified !== undefined) user.is_phone_verified = Boolean(is_phone_verified);
+    if (userIsAdminLike && is_email_verified !== undefined) user.is_email_verified = Boolean(is_email_verified);
+    if (userIsAdminLike && is_phone_verified !== undefined) user.is_phone_verified = Boolean(is_phone_verified);
 
     await user.save();
 
-    const safeUser = user.toObject();
-    delete safeUser.password;
-
     return res.status(200).json({
       message: 'User updated successfully',
-      user: safeUser,
+      user: serializeUser(user),
     });
   } catch (error) {
     return next(error);
@@ -216,14 +223,14 @@ const deleteUser = async (req, res, next) => {
   }
 };
 
-// Get recently viewed cars for a user (self or admin/administrator).
+// Get recently viewed cars for a user (self or admin/superadmin).
 const getRecentViewedCars = async (req, res, next) => {
   try {
     const { user_id: userId } = req.params;
-    const isAdminLike = ['admin', 'administrator'].includes(req.user?.role);
+    const userIsAdminLike = isAdminLike(req.user?.role);
     const isSelfRequest = req.user?.id === userId;
 
-    if (!isAdminLike && !isSelfRequest) {
+    if (!userIsAdminLike && !isSelfRequest) {
       return res.status(403).json({ error: 'You can only view your own recently viewed cars' });
     }
 
